@@ -102,7 +102,9 @@ function transformVenues(rows) {
 function transformWatchFest(rows) {
   return rows.map(r => ({
     ...r,
-    flyer_image_url: convertDriveUrl(r.flyer_image_url),
+    flyer_image_url:  convertDriveUrl(r.flyer_image_url),
+    venue_image_url:  convertDriveUrl(r.venue_image_url),
+    // video_url is a TikTok link — pass through unchanged
   }))
 }
 

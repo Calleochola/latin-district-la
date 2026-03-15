@@ -98,6 +98,37 @@ function useCountdown(dateStr) {
   return timeLeft
 }
 
+// ── Kickoff status helpers ───────────────────────────────────────────────────
+// Uses kickoff_datetime to derive one of: 'upcoming' | 'live' | 'final'
+
+const MATCH_DURATION_MS = 110 * 60 * 1000  // ~110 min window for "LIVE NOW"
+
+function computeKickoffStatus(kickoffDatetime) {
+  if (!kickoffDatetime) return null
+  const kickoff = new Date(kickoffDatetime)
+  if (isNaN(kickoff.getTime())) return null
+  const diff = kickoff.getTime() - Date.now()
+  if (diff > 0) return {
+    state: 'upcoming',
+    days:    Math.floor(diff / 86400000),
+    hours:   Math.floor((diff % 86400000) / 3600000),
+    minutes: Math.floor((diff % 3600000)  / 60000),
+  }
+  if (diff > -MATCH_DURATION_MS) return { state: 'live' }
+  return { state: 'final' }
+}
+
+function useKickoffStatus(kickoffDatetime) {
+  const [s, setS] = useState(() => computeKickoffStatus(kickoffDatetime))
+  useEffect(() => {
+    setS(computeKickoffStatus(kickoffDatetime))
+    if (!kickoffDatetime) return
+    const id = setInterval(() => setS(computeKickoffStatus(kickoffDatetime)), 10000)
+    return () => clearInterval(id)
+  }, [kickoffDatetime])
+  return s
+}
+
 // ── useSheets hook ──────────────────────────────────────────────────────────
 
 function useSheets() {
@@ -205,6 +236,35 @@ function VenueCard({ venue }) {
 }
 
 
+function isFlagshipItem(item) {
+  const f = (item.flagship || '').toLowerCase()
+  return f === 'true' || f === 'yes'
+}
+
+function KickoffStatus({ kickoffDatetime }) {
+  const s = useKickoffStatus(kickoffDatetime)
+  if (!s) return null
+  if (s.state === 'live') return (
+    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: 'var(--font-label)', fontSize: 12, fontWeight: 700, letterSpacing: '.1em', color: '#00C853', background: 'rgba(0,200,83,.12)', border: '1px solid rgba(0,200,83,.3)', borderRadius: 2, padding: '4px 10px', marginBottom: 8 }}>
+      <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#00C853', display: 'inline-block' }} />
+      LIVE NOW
+    </div>
+  )
+  if (s.state === 'final') return (
+    <div style={{ fontFamily: 'var(--font-label)', fontSize: 12, fontWeight: 700, letterSpacing: '.1em', color: 'var(--muted)', background: 'rgba(90,90,138,.15)', border: '1px solid rgba(90,90,138,.25)', borderRadius: 2, padding: '4px 10px', display: 'inline-block', marginBottom: 8 }}>
+      FINAL
+    </div>
+  )
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 8, fontFamily: 'var(--font-label)', fontSize: 12, color: 'var(--muted)' }}>
+      <span style={{ color: 'var(--gold)', fontWeight: 700, letterSpacing: '.06em' }}>KICKOFF IN</span>
+      {s.days > 0 && <span style={{ color: 'var(--cream)', fontWeight: 700 }}>{s.days}d</span>}
+      <span style={{ color: 'var(--cream)', fontWeight: 700 }}>{String(s.hours).padStart(2,'0')}h</span>
+      <span style={{ color: 'var(--cream)', fontWeight: 700 }}>{String(s.minutes).padStart(2,'0')}m</span>
+    </div>
+  )
+}
+
 function getWatchfestCategory(item) {
   const raw = (item.category || item.event_type || '').toLowerCase().trim()
   if (raw.includes('dodger')) return 'dodgers'
@@ -214,50 +274,90 @@ function getWatchfestCategory(item) {
 }
 
 function WatchFestCard({ item }) {
-  const imgUrl = convertDriveUrl(item.flyer_image_url)
+  const isDodgers = getWatchfestCategory(item) === 'dodgers'
+  const accentColor = isDodgers ? 'var(--blue)' : 'var(--gold)'
+  const badgeBg = isDodgers ? 'rgba(0,229,255,.18)' : 'rgba(255,179,0,.18)'
   const status = item.status || ''
   const sc = STATUS_COLORS[status] || { bg: 'rgba(90,90,138,.2)', color: 'var(--muted)' }
   const title = item.match_name || item.event_name || 'Watch Fest Event'
+  const crowdLevels = ['Low', 'Medium', 'High', 'Packed']
+  const crowdColors = { Low: '#00C853', Medium: '#FFB300', High: '#FF6D00', Packed: '#FF1744' }
+
+  // Build carousel from individual media fields (in order: flyer → venue → video)
+  const mediaEntries = []
+  if (item.flyer_image_url)  mediaEntries.push({ url: item.flyer_image_url, type: 'image' })
+  if (item.venue_image_url)  mediaEntries.push({ url: item.venue_image_url, type: 'image' })
+  if (item.video_url)        mediaEntries.push({ url: item.video_url,        type: 'tiktok' })
+  const mediaUrls  = mediaEntries.map(m => m.url).join('|')
+  const mediaTypes = mediaEntries.map(m => m.type).join('|')
 
   return (
     <div className="event-card">
-      <div className="event-card__image">
-        {imgUrl ? (
-          <img src={imgUrl} alt={title} loading="lazy" />
-        ) : (
-          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg, #0d0d2b, #1a0a2e)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 48 }}>⚽</div>
-        )}
-        <div className="event-card__overlay" />
-        <div className="event-card__overlay-text">
-          <div className="event-card__name">{title}</div>
-          <div className="event-card__meta">{item.venue || 'Latin District LA'} · {formatDate(item.date)}{item.time ? ` · ${item.time}` : ''}</div>
-        </div>
-      </div>
+      {mediaEntries.length > 0 && (
+        <MediaCarousel mediaUrls={mediaUrls} mediaTypes={mediaTypes} />
+      )}
       <div className="event-card__body">
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 6 }}>
-          <span className="event-card__badge" style={{ background: getWatchfestCategory(item) === 'dodgers' ? 'rgba(0,229,255,.18)' : 'rgba(255,179,0,.18)', color: getWatchfestCategory(item) === 'dodgers' ? '#00E5FF' : '#FFB300' }}>
-            {getWatchfestCategory(item) === 'dodgers' ? 'Dodger Fest' : 'Goal City'}
+        {/* Team flags */}
+        {item.team_flags && (
+          <div style={{ fontSize: 22, marginBottom: 6, letterSpacing: '0.05em' }}>{item.team_flags}</div>
+        )}
+
+        {/* Match name */}
+        <div style={{ fontFamily: 'var(--font-heading)', fontSize: 'clamp(15px, 4vw, 20px)', color: 'var(--cream)', lineHeight: 1.1, marginBottom: 4 }}>
+          {title}
+        </div>
+
+        {/* Match stage */}
+        {item.match_stage && (
+          <div style={{ fontFamily: 'var(--font-label)', fontSize: 11, letterSpacing: '.1em', textTransform: 'uppercase', color: accentColor, marginBottom: 8 }}>
+            {item.match_stage}
+          </div>
+        )}
+
+        {/* Badges */}
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', marginBottom: 8 }}>
+          <span className="event-card__badge" style={{ background: badgeBg, color: accentColor }}>
+            {isDodgers ? 'Dodger Fest' : 'Goal City'}
           </span>
           {status && (
             <span className="status-badge" style={{ background: sc.bg, color: sc.color }}>{status}</span>
           )}
-          {item.flagship === 'yes' && (
+          {isFlagshipItem(item) && (
             <span className="status-badge" style={{ background: 'rgba(255,179,0,.12)', color: 'var(--gold)' }}>★ Flagship</span>
           )}
         </div>
+
+        {/* Kickoff countdown / LIVE NOW / FINAL */}
+        <KickoffStatus kickoffDatetime={item.kickoff_datetime} />
+
+        {/* Date · time · venue */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginBottom: 8, fontFamily: 'var(--font-label)', fontSize: 13, color: 'var(--muted)' }}>
+          {(item.date || item.time) && (
+            <span>📅 {formatDate(item.date)}{item.time ? ` · ${item.time}` : ''}</span>
+          )}
+          {item.venue && <span>📍 {item.venue}</span>}
+          {item.tailgate_time && <span>🎉 Tailgate {item.tailgate_time}</span>}
+        </div>
+
+        {/* Crowd level indicator */}
         {item.crowd_level && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 8 }}>
             <span style={{ fontFamily: 'var(--font-label)', fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--muted)' }}>Crowd</span>
-            {['Low','Medium','High','Packed'].map((lvl, i) => {
-              const filled = ['Low','Medium','High','Packed'].indexOf(item.crowd_level) >= i
-              const colors = { Low: '#00C853', Medium: '#FFB300', High: '#FF6D00', Packed: '#FF1744' }
-              return (
-                <div key={lvl} style={{ width: 10, height: 10, borderRadius: 2, background: filled ? (colors[item.crowd_level] || 'var(--muted)') : 'rgba(255,255,255,.1)' }} />
-              )
-            })}
+            {crowdLevels.map((lvl, i) => (
+              <div key={lvl} style={{ width: 10, height: 10, borderRadius: 2, background: crowdLevels.indexOf(item.crowd_level) >= i ? (crowdColors[item.crowd_level] || 'var(--muted)') : 'rgba(255,255,255,.1)' }} />
+            ))}
             <span style={{ fontFamily: 'var(--font-label)', fontSize: 11, color: 'var(--cream)' }}>{item.crowd_level}</span>
           </div>
         )}
+
+        {/* Description */}
+        {item.description && (
+          <p style={{ fontFamily: 'var(--font-label)', fontSize: 13, color: 'var(--muted)', lineHeight: 1.5, marginBottom: 10 }}>
+            {item.description}
+          </p>
+        )}
+
+        {/* Ticket CTA */}
         {item.ticket_link ? (
           <a href={item.ticket_link} target="_blank" rel="noopener noreferrer" className="btn btn-red w-full" style={{ marginTop: 4, fontSize: 13, padding: '10px 16px' }}>
             Get Tickets →
@@ -268,9 +368,6 @@ function WatchFestCard({ item }) {
           </button>
         )}
       </div>
-      {item.media_urls && item.media_types && (
-        <MediaCarousel mediaUrls={item.media_urls} mediaTypes={item.media_types} />
-      )}
     </div>
   )
 }
@@ -370,10 +467,8 @@ function Footer() {
 function HomePage({ data, loading }) {
   const navigate = useNavigate()
   const featured = data.events.filter(e => e.featured === 'yes' && e.active !== 'no')
-  const flagshipEvent = data.events.find(e =>
-    e.active !== 'no' &&
-    (e.flagship === 'TRUE' || e.flagship === 'true' || e.flagship === 'yes')
-  )
+  const flagshipEvent = data.events.find(e => e.active !== 'no' && isFlagshipItem(e))
+  const flagshipWatchFest = (data.watchfest || []).find(e => e.active !== 'no' && isFlagshipItem(e))
   const venueStrip = (data.venues.length > 0 ? data.venues : FALLBACK_VENUES)
     .filter(v => v.active !== 'no')
     .slice(0, 8)
@@ -439,6 +534,52 @@ function HomePage({ data, loading }) {
                     </a>
                   ) : (
                     <Link to="/events" className="btn btn-outline-blue">View Events →</Link>
+                  )}
+                </div>
+              </div>
+            </div>
+          </section>
+          <NeonDivider />
+        </>
+      )}
+
+      {/* ── Flagship Watch Fest Event ── */}
+      {!loading && flagshipWatchFest && (
+        <>
+          <section className="section" style={{ background: 'linear-gradient(135deg, rgba(255,179,0,.05), rgba(0,0,0,0))' }}>
+            <div className="container">
+              <span style={{ fontFamily: 'var(--font-label)', fontSize: 11, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--gold)', background: 'rgba(255,179,0,.12)', border: '1px solid rgba(255,179,0,.3)', borderRadius: 2, padding: '4px 10px', display: 'inline-block', marginBottom: 16 }}>
+                ⚽ {getWatchfestCategory(flagshipWatchFest) === 'dodgers' ? 'Dodger Fest' : 'Goal City'} — Watch Fest
+              </span>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 28, alignItems: 'center' }}>
+                {flagshipWatchFest.flyer_image_url && (
+                  <div style={{ borderRadius: 4, overflow: 'hidden', maxHeight: 360, position: 'relative' }}>
+                    <img src={flagshipWatchFest.flyer_image_url} alt={flagshipWatchFest.match_name || 'Watch Fest'} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                    <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(6,6,15,.85) 0%, transparent 60%)' }} />
+                  </div>
+                )}
+                <div>
+                  {flagshipWatchFest.team_flags && (
+                    <div style={{ fontSize: 28, marginBottom: 6 }}>{flagshipWatchFest.team_flags}</div>
+                  )}
+                  <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: 'clamp(28px, 7vw, 64px)', color: 'var(--cream)', lineHeight: 1, marginBottom: 8 }}>
+                    {flagshipWatchFest.match_name || flagshipWatchFest.event_name}
+                  </h2>
+                  {flagshipWatchFest.match_stage && (
+                    <div style={{ fontFamily: 'var(--font-label)', fontSize: 12, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: 10 }}>
+                      {flagshipWatchFest.match_stage}
+                    </div>
+                  )}
+                  <KickoffStatus kickoffDatetime={flagshipWatchFest.kickoff_datetime} />
+                  <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 20, fontFamily: 'var(--font-label)', fontSize: 14, color: 'var(--muted)' }}>
+                    {flagshipWatchFest.date && <span>📅 {formatDate(flagshipWatchFest.date)}{flagshipWatchFest.time ? ` · ${flagshipWatchFest.time}` : ''}</span>}
+                    {flagshipWatchFest.venue && <span>📍 {flagshipWatchFest.venue}</span>}
+                    {flagshipWatchFest.tailgate_time && <span>🎉 Tailgate {flagshipWatchFest.tailgate_time}</span>}
+                  </div>
+                  {flagshipWatchFest.ticket_link ? (
+                    <a href={flagshipWatchFest.ticket_link} target="_blank" rel="noopener noreferrer" className="btn btn-gold">Get Tickets →</a>
+                  ) : (
+                    <Link to="/watchfest" className="btn btn-outline-blue">See Watch Fest →</Link>
                   )}
                 </div>
               </div>
@@ -851,14 +992,17 @@ function WatchFestPage({ data, loading }) {
   const worldCupEvents = allEvents.filter(item => getWatchfestCategory(item) === 'worldcup')
   const dodgerEvents = allEvents.filter(item => getWatchfestCategory(item) === 'dodgers')
   const activeEvents = activeTab === 'worldcup' ? worldCupEvents : dodgerEvents
-  const flagship = activeEvents.find(item => item.flagship === 'yes')
+  const flagship = activeEvents.find(isFlagshipItem)
 
   const nextEvent = useMemo(() =>
     activeEvents
-      .filter(e => { const d = new Date(e.date); return !isNaN(d) && d > Date.now() })
-      .sort((a, b) => new Date(a.date) - new Date(b.date))[0]
+      .filter(e => {
+        const d = new Date(e.kickoff_datetime || e.date)
+        return !isNaN(d) && d > Date.now()
+      })
+      .sort((a, b) => new Date(a.kickoff_datetime || a.date) - new Date(b.kickoff_datetime || b.date))[0]
   , [activeEvents])
-  const countdown = useCountdown(nextEvent?.date)
+  const pageStatus = useKickoffStatus(nextEvent?.kickoff_datetime || nextEvent?.date)
 
   return (
     <div className="page-top">
@@ -898,28 +1042,39 @@ function WatchFestPage({ data, loading }) {
               : 'Dodger Fest is the baseball lane inside Watch Fest. Use this tab for Dodgers watch-night flyers, featured game schedules, and supporting venue activations across the district.'}
           </p>
 
-          {/* Countdown to next match */}
-          {!loading && countdown && nextEvent && (
-            <div style={{ background: 'rgba(255,179,0,.06)', border: '1px solid rgba(255,179,0,.25)', borderRadius: 4, padding: '20px 24px', marginBottom: 28 }}>
+          {/* Next match status / countdown */}
+          {!loading && nextEvent && pageStatus && (
+            <div style={{ background: 'rgba(255,179,0,.06)', border: `1px solid ${pageStatus.state === 'live' ? 'rgba(0,200,83,.4)' : 'rgba(255,179,0,.25)'}`, borderRadius: 4, padding: '20px 24px', marginBottom: 28 }}>
               <div style={{ fontFamily: 'var(--font-label)', fontSize: 11, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 6 }}>
-                Next Match Countdown
+                {pageStatus.state === 'live' ? 'Match in Progress' : pageStatus.state === 'final' ? 'Last Match Result' : 'Next Match Countdown'}
               </div>
               <div style={{ fontFamily: 'var(--font-heading)', fontSize: 18, color: 'var(--cream)', marginBottom: 14 }}>
                 {nextEvent.match_name || nextEvent.event_name}
+                {nextEvent.team_flags && <span style={{ marginLeft: 10, fontSize: 22 }}>{nextEvent.team_flags}</span>}
               </div>
-              <div className="countdown-grid" style={{ justifyContent: 'flex-start' }}>
-                {[
-                  { num: String(countdown.days).padStart(2, '0'),    label: 'Days' },
-                  { num: String(countdown.hours).padStart(2, '0'),   label: 'Hours' },
-                  { num: String(countdown.minutes).padStart(2, '0'), label: 'Mins' },
-                  { num: String(countdown.seconds).padStart(2, '0'), label: 'Secs' },
-                ].map(({ num, label }) => (
-                  <div key={label} className="countdown-box">
-                    <div className="countdown-box__num">{num}</div>
-                    <div className="countdown-box__label">{label}</div>
-                  </div>
-                ))}
-              </div>
+              {pageStatus.state === 'live' && (
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: 16, letterSpacing: '.1em', color: '#00C853' }}>
+                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#00C853', display: 'inline-block' }} />
+                  LIVE NOW
+                </div>
+              )}
+              {pageStatus.state === 'final' && (
+                <div style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: 14, letterSpacing: '.1em', color: 'var(--muted)' }}>FINAL</div>
+              )}
+              {pageStatus.state === 'upcoming' && (
+                <div className="countdown-grid" style={{ justifyContent: 'flex-start' }}>
+                  {[
+                    { num: String(pageStatus.days).padStart(2, '0'),    label: 'Days' },
+                    { num: String(pageStatus.hours).padStart(2, '0'),   label: 'Hours' },
+                    { num: String(pageStatus.minutes).padStart(2, '0'), label: 'Mins' },
+                  ].map(({ num, label }) => (
+                    <div key={label} className="countdown-box">
+                      <div className="countdown-box__num">{num}</div>
+                      <div className="countdown-box__label">{label}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
@@ -945,24 +1100,33 @@ function WatchFestPage({ data, loading }) {
 
           {!loading && flagship && (
             <div className="flagship-card mb-40">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 16, marginBottom: 16 }}>
+              <div style={{ marginBottom: 12 }}>
                 <span style={{ fontFamily: 'var(--font-label)', fontSize: 11, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: activeTab === 'worldcup' ? 'var(--gold)' : 'var(--blue)', background: activeTab === 'worldcup' ? 'rgba(255,179,0,.15)' : 'rgba(0,229,255,.15)', border: activeTab === 'worldcup' ? '1px solid rgba(255,179,0,.3)' : '1px solid rgba(0,229,255,.3)', borderRadius: 2, padding: '4px 10px' }}>
                   ★ Featured {activeTab === 'worldcup' ? 'Goal City' : 'Dodger Fest'} Event
                 </span>
               </div>
-              <h3 style={{ fontFamily: 'var(--font-heading)', fontSize: 'clamp(28px, 6vw, 56px)', color: 'var(--cream)', lineHeight: 1, marginBottom: 12 }}>
+              {flagship.team_flags && (
+                <div style={{ fontSize: 28, marginBottom: 6, letterSpacing: '0.05em' }}>{flagship.team_flags}</div>
+              )}
+              <h3 style={{ fontFamily: 'var(--font-heading)', fontSize: 'clamp(28px, 6vw, 56px)', color: 'var(--cream)', lineHeight: 1, marginBottom: 8 }}>
                 {flagship.match_name || flagship.event_name}
               </h3>
-              <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', marginBottom: 16 }}>
-                {flagship.date && <div style={{ fontFamily: 'var(--font-label)', fontSize: 14, color: 'var(--muted)' }}>📅 {formatDate(flagship.date)}</div>}
-                {flagship.time && <div style={{ fontFamily: 'var(--font-label)', fontSize: 14, color: 'var(--muted)' }}>🕙 {flagship.time}</div>}
-                {flagship.venue && <div style={{ fontFamily: 'var(--font-label)', fontSize: 14, color: 'var(--muted)' }}>📍 {flagship.venue}</div>}
+              {flagship.match_stage && (
+                <div style={{ fontFamily: 'var(--font-label)', fontSize: 13, letterSpacing: '.1em', textTransform: 'uppercase', color: activeTab === 'worldcup' ? 'var(--gold)' : 'var(--blue)', marginBottom: 12 }}>
+                  {flagship.match_stage}
+                </div>
+              )}
+              <KickoffStatus kickoffDatetime={flagship.kickoff_datetime} />
+              <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 12, fontFamily: 'var(--font-label)', fontSize: 14, color: 'var(--muted)' }}>
+                {flagship.date && <span>📅 {formatDate(flagship.date)}{flagship.time ? ` · ${flagship.time}` : ''}</span>}
+                {flagship.venue && <span>📍 {flagship.venue}</span>}
+                {flagship.tailgate_time && <span>🎉 Tailgate {flagship.tailgate_time}</span>}
               </div>
-              <p style={{ fontFamily: 'var(--font-label)', fontSize: 14, color: 'var(--muted)', maxWidth: 760, lineHeight: 1.55, marginBottom: 20 }}>
-                {activeTab === 'worldcup'
-                  ? 'Recommended flagship setup: The Shops on 4th & Main with outdoor screens, vendors, drinks, activities, and live music before and after kickoff.'
-                  : 'Recommended featured setup: a high-energy Dodgers watch night with live music, drink specials, and a post-game handoff into the district.'}
-              </p>
+              {flagship.description && (
+                <p style={{ fontFamily: 'var(--font-label)', fontSize: 14, color: 'var(--muted)', maxWidth: 760, lineHeight: 1.55, marginBottom: 16 }}>
+                  {flagship.description}
+                </p>
+              )}
               {flagship.ticket_link ? (
                 <a href={flagship.ticket_link} target="_blank" rel="noopener noreferrer" className="btn btn-gold">Get Tickets →</a>
               ) : (
