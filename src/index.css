@@ -40,6 +40,15 @@ ul { list-style: none; }
 .neon-gold   { text-shadow: 0 0 4px #FFB300, 0 0 12px rgba(255,179,0,.55); }
 .neon-white  { text-shadow: 0 0 4px #fff, 0 0 10px rgba(255,255,255,.35); }
 
+/* ── Reduce neon glow on mobile for readability ─────── */
+@media (max-width: 767px) {
+  .neon-blue   { text-shadow: 0 0 2px #00E5FF, 0 0 6px rgba(0,229,255,.3); }
+  .neon-red    { text-shadow: 0 0 2px #FF1744, 0 0 6px rgba(255,23,68,.3); }
+  .neon-purple { text-shadow: 0 0 2px #D500F9, 0 0 6px rgba(213,0,249,.3); }
+  .neon-gold   { text-shadow: 0 0 2px #FFB300, 0 0 6px rgba(255,179,0,.3); }
+  .neon-white  { text-shadow: 0 0 2px #fff, 0 0 5px rgba(255,255,255,.2); }
+}
+
 /* ── Cut-corner Button ──────────────────────────────── */
 .btn {
   display: inline-flex;

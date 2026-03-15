@@ -245,6 +245,19 @@ function WatchFestCard({ item }) {
             <span className="status-badge" style={{ background: 'rgba(255,179,0,.12)', color: 'var(--gold)' }}>★ Flagship</span>
           )}
         </div>
+        {item.crowd_level && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+            <span style={{ fontFamily: 'var(--font-label)', fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--muted)' }}>Crowd</span>
+            {['Low','Medium','High','Packed'].map((lvl, i) => {
+              const filled = ['Low','Medium','High','Packed'].indexOf(item.crowd_level) >= i
+              const colors = { Low: '#00C853', Medium: '#FFB300', High: '#FF6D00', Packed: '#FF1744' }
+              return (
+                <div key={lvl} style={{ width: 10, height: 10, borderRadius: 2, background: filled ? (colors[item.crowd_level] || 'var(--muted)') : 'rgba(255,255,255,.1)' }} />
+              )
+            })}
+            <span style={{ fontFamily: 'var(--font-label)', fontSize: 11, color: 'var(--cream)' }}>{item.crowd_level}</span>
+          </div>
+        )}
         {item.ticket_link ? (
           <a href={item.ticket_link} target="_blank" rel="noopener noreferrer" className="btn btn-red w-full" style={{ marginTop: 4, fontSize: 13, padding: '10px 16px' }}>
             Get Tickets →
@@ -357,6 +370,10 @@ function Footer() {
 function HomePage({ data, loading }) {
   const navigate = useNavigate()
   const featured = data.events.filter(e => e.featured === 'yes' && e.active !== 'no')
+  const flagshipEvent = data.events.find(e =>
+    e.active !== 'no' &&
+    (e.flagship === 'TRUE' || e.flagship === 'true' || e.flagship === 'yes')
+  )
   const venueStrip = (data.venues.length > 0 ? data.venues : FALLBACK_VENUES)
     .filter(v => v.active !== 'no')
     .slice(0, 8)
@@ -382,6 +399,54 @@ function HomePage({ data, loading }) {
       </section>
 
       <NeonDivider />
+
+      {/* ── Flagship Hero Event ── */}
+      {!loading && flagshipEvent && (
+        <>
+          <section className="section" style={{ background: 'linear-gradient(135deg, rgba(255,23,68,.06), rgba(0,0,0,0))' }}>
+            <div className="container">
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 32, alignItems: 'center' }}>
+                {flagshipEvent.flyer_image_url && (
+                  <div style={{ borderRadius: 4, overflow: 'hidden', maxHeight: 400, position: 'relative' }}>
+                    <img
+                      src={convertDriveUrl(flagshipEvent.flyer_image_url)}
+                      alt={flagshipEvent.event_name}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                    />
+                    <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(6,6,15,.85) 0%, transparent 60%)' }} />
+                  </div>
+                )}
+                <div>
+                  <span style={{ fontFamily: 'var(--font-label)', fontSize: 11, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--red)', background: 'rgba(255,23,68,.12)', border: '1px solid rgba(255,23,68,.3)', borderRadius: 2, padding: '4px 10px', display: 'inline-block', marginBottom: 14 }}>
+                    ★ Featured Event
+                  </span>
+                  <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: 'clamp(32px, 8vw, 72px)', color: 'var(--cream)', lineHeight: 1, marginBottom: 14 }}>
+                    {flagshipEvent.event_name}
+                  </h2>
+                  <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', marginBottom: 20 }}>
+                    {flagshipEvent.date && <span style={{ fontFamily: 'var(--font-label)', fontSize: 14, color: 'var(--muted)' }}>📅 {formatDate(flagshipEvent.date)}</span>}
+                    {flagshipEvent.time && <span style={{ fontFamily: 'var(--font-label)', fontSize: 14, color: 'var(--muted)' }}>🕙 {flagshipEvent.time}</span>}
+                    {flagshipEvent.venue && <span style={{ fontFamily: 'var(--font-label)', fontSize: 14, color: 'var(--muted)' }}>📍 {flagshipEvent.venue}</span>}
+                  </div>
+                  {flagshipEvent.description && (
+                    <p style={{ fontFamily: 'var(--font-label)', fontSize: 15, color: 'var(--muted)', lineHeight: 1.6, maxWidth: 560, marginBottom: 24 }}>
+                      {flagshipEvent.description}
+                    </p>
+                  )}
+                  {flagshipEvent.ticket_link ? (
+                    <a href={flagshipEvent.ticket_link} target="_blank" rel="noopener noreferrer" className="btn btn-red">
+                      Get Tickets →
+                    </a>
+                  ) : (
+                    <Link to="/events" className="btn btn-outline-blue">View Events →</Link>
+                  )}
+                </div>
+              </div>
+            </div>
+          </section>
+          <NeonDivider />
+        </>
+      )}
 
       {/* ── Featured Events ── */}
       <section className="section">
@@ -687,32 +752,6 @@ function FridayNightPage({ data, loading }) {
 
       <NeonDivider />
 
-      {/* Night Timeline */}
-      <section className="section">
-        <div className="container" style={{ maxWidth: 720 }}>
-          <div className="section-tag">The Night</div>
-          <h2 className="section-heading neon-red mb-32" style={{ color: 'var(--red)' }}>HOW THE NIGHT FLOWS</h2>
-          <div className="timeline">
-            {[
-              { time: '10PM', title: 'Doors Open', desc: 'Venues open across the district. Pre-game drink specials at every stop.' },
-              { time: '11PM', title: 'Peak Hours Begin', desc: 'DJs in full swing. Dance floors filling up. Bar Crawl passports being stamped.' },
-              { time: '12AM', title: 'Midnight Surge', desc: 'Cross-venue movement peaks. Live performances, guest DJs, and specials kick in.' },
-              { time: '2AM', title: 'Last Call', desc: 'Wrap the night at your favorite spot. After-hours info at the door.' },
-            ].map((item, i) => (
-              <div key={i} className="timeline-item">
-                <div className="timeline-time">{item.time}</div>
-                <div>
-                  <div className="timeline-content__title">{item.title}</div>
-                  <div className="timeline-content__desc">{item.desc}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <NeonDivider />
-
       {/* Live Lineup */}
       <section className="section">
         <div className="container">
@@ -752,6 +791,32 @@ function FridayNightPage({ data, loading }) {
 
       <NeonDivider />
 
+      {/* Night Timeline */}
+      <section className="section">
+        <div className="container" style={{ maxWidth: 720 }}>
+          <div className="section-tag">The Night</div>
+          <h2 className="section-heading neon-red mb-32" style={{ color: 'var(--red)' }}>HOW THE NIGHT FLOWS</h2>
+          <div className="timeline">
+            {[
+              { time: '10PM', title: 'Doors Open', desc: 'Venues open across the district. Pre-game drink specials at every stop.' },
+              { time: '11PM', title: 'Peak Hours Begin', desc: 'DJs in full swing. Dance floors filling up. Bar Crawl passports being stamped.' },
+              { time: '12AM', title: 'Midnight Surge', desc: 'Cross-venue movement peaks. Live performances, guest DJs, and specials kick in.' },
+              { time: '2AM', title: 'Last Call', desc: 'Wrap the night at your favorite spot. After-hours info at the door.' },
+            ].map((item, i) => (
+              <div key={i} className="timeline-item">
+                <div className="timeline-time">{item.time}</div>
+                <div>
+                  <div className="timeline-content__title">{item.title}</div>
+                  <div className="timeline-content__desc">{item.desc}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <NeonDivider />
+
       {/* How It Works */}
       <section className="section">
         <div className="container">
@@ -781,7 +846,7 @@ function FridayNightPage({ data, loading }) {
 // ── WATCH FEST PAGE ─────────────────────────────────────────────────────────
 
 function WatchFestPage({ data, loading }) {
-  const [activeTab, setActiveTab] = useState('worldcup')
+  const [activeTab, setActiveTab] = useState('dodgers')
   const allEvents = Array.isArray(data.watchfest) ? data.watchfest.filter(item => item.active !== 'no') : []
   const worldCupEvents = allEvents.filter(item => getWatchfestCategory(item) === 'worldcup')
   const dodgerEvents = allEvents.filter(item => getWatchfestCategory(item) === 'dodgers')
@@ -808,11 +873,11 @@ function WatchFestPage({ data, loading }) {
         </p>
 
         <div style={{ display: 'flex', justifyContent: 'center', gap: 12, flexWrap: 'wrap', position: 'relative', zIndex: 1 }}>
-          <button className={`btn ${activeTab === 'worldcup' ? 'btn-gold' : 'btn-outline-blue'}`} onClick={() => setActiveTab('worldcup')}>
-            World Cup
-          </button>
           <button className={`btn ${activeTab === 'dodgers' ? 'btn-gold' : 'btn-outline-blue'}`} onClick={() => setActiveTab('dodgers')}>
             Dodger Games
+          </button>
+          <button className={`btn ${activeTab === 'worldcup' ? 'btn-gold' : 'btn-outline-blue'}`} onClick={() => setActiveTab('worldcup')}>
+            World Cup
           </button>
         </div>
       </section>
@@ -821,7 +886,7 @@ function WatchFestPage({ data, loading }) {
 
       <section className="section">
         <div className="container">
-          <LiveBadge text="Cards live from Google Sheets" />
+          <LiveBadge />
 
           <div className="section-tag">{activeTab === 'worldcup' ? 'Goal City' : 'Dodger Fest'}</div>
           <h2 className="section-heading mb-8" style={{ color: activeTab === 'worldcup' ? 'var(--gold)' : 'var(--blue)' }}>
@@ -1553,7 +1618,7 @@ function CalendarPage({ data, loading }) {
     <div className="page-top">
       <section className="section">
         <div className="container">
-          <LiveBadge text="Events sync from Google Sheets" />
+          <LiveBadge />
           <div className="section-tag">Upcoming Events</div>
           <h1 className="section-heading neon-blue mb-32">CALENDAR</h1>
 
