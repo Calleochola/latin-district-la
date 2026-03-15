@@ -171,23 +171,33 @@ function NeonDivider() {
 
 function EventCard({ event }) {
   const badge = BADGE_COLORS[event.event_type] || BADGE_COLORS.special
-  const imgUrl = convertDriveUrl(event.flyer_image_url)
+
+  // Build carousel: flyer first, venue second, video last
+  const videoType = getVideoType(event.video_url)
+  const mediaEntries = []
+  if (event.flyer_image_url)        mediaEntries.push({ url: convertDriveUrl(event.flyer_image_url), type: 'image' })
+  if (event.venue_image_url)        mediaEntries.push({ url: convertDriveUrl(event.venue_image_url), type: 'image' })
+  if (event.video_url && videoType) mediaEntries.push({ url: event.video_url, type: videoType })
+  const mediaUrls  = mediaEntries.map(m => m.url).join('|')
+  const mediaTypes = mediaEntries.map(m => m.type).join('|')
 
   return (
     <div className="event-card">
-      <div className="event-card__image">
-        {imgUrl ? (
-          <img src={imgUrl} alt={event.event_name} loading="lazy" />
-        ) : (
+      {mediaEntries.length > 0 ? (
+        <MediaCarousel mediaUrls={mediaUrls} mediaTypes={mediaTypes} />
+      ) : (
+        <div className="event-card__image">
           <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg, #0d0d2b, #1a0a2e)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 48 }}>🎉</div>
-        )}
-        <div className="event-card__overlay" />
-        <div className="event-card__overlay-text">
-          <div className="event-card__name">{event.event_name}</div>
-          <div className="event-card__meta">{event.venue} · {formatDate(event.date)}{event.time ? ` · ${event.time}` : ''}</div>
+          <div className="event-card__overlay" />
+          <div className="event-card__overlay-text">
+            <div className="event-card__name">{event.event_name}</div>
+            <div className="event-card__meta">{event.venue} · {formatDate(event.date)}{event.time ? ` · ${event.time}` : ''}</div>
+          </div>
         </div>
-      </div>
+      )}
       <div className="event-card__body">
+        <div style={{ fontFamily: 'var(--font-heading)', fontSize: 'clamp(14px, 4vw, 18px)', color: 'var(--cream)', marginBottom: 4 }}>{event.event_name}</div>
+        <div style={{ fontFamily: 'var(--font-label)', fontSize: 13, color: 'var(--muted)', marginBottom: 8 }}>{event.venue} · {formatDate(event.date)}{event.time ? ` · ${event.time}` : ''}</div>
         <span
           className="event-card__badge"
           style={{ background: badge.bg, color: badge.color }}
@@ -198,9 +208,6 @@ function EventCard({ event }) {
           </a>
         )}
       </div>
-      {event.media_urls && event.media_types && (
-        <MediaCarousel mediaUrls={event.media_urls} mediaTypes={event.media_types} />
-      )}
     </div>
   )
 }
@@ -290,12 +297,12 @@ function WatchFestCard({ item }) {
   const crowdLevels = ['Low', 'Medium', 'High', 'Packed']
   const crowdColors = { Low: '#00C853', Medium: '#FFB300', High: '#FF6D00', Packed: '#FF1744' }
 
-  // Build carousel: video first, then flyer, then venue. Apply Drive URL conversion to images.
+  // Build carousel: flyer first, venue second, video last. Apply Drive URL conversion to images.
   const videoType = getVideoType(item.video_url)
   const mediaEntries = []
-  if (item.video_url && videoType)      mediaEntries.push({ url: item.video_url,                      type: videoType })
   if (item.flyer_image_url)             mediaEntries.push({ url: convertDriveUrl(item.flyer_image_url), type: 'image' })
   if (item.venue_image_url)             mediaEntries.push({ url: convertDriveUrl(item.venue_image_url), type: 'image' })
+  if (item.video_url && videoType)      mediaEntries.push({ url: item.video_url,                      type: videoType })
   const mediaUrls  = mediaEntries.map(m => m.url).join('|')
   const mediaTypes = mediaEntries.map(m => m.type).join('|')
 
@@ -484,7 +491,6 @@ function HomePage({ data, loading }) {
         <div className="hero__content">
           <img src="/logo.png" alt="Latin District LA" className="hero__logo" onError={e => e.target.style.display = 'none'} />
           <div className="hero__headline">
-            <div style={{ color: 'var(--cream)' }}>THE</div>
             <div className="neon-red" style={{ color: 'var(--red)' }}>LATIN</div>
             <div className="neon-blue" style={{ color: 'var(--blue)' }}>DISTRICT</div>
           </div>
@@ -990,11 +996,11 @@ function FridayNightPage({ data, loading }) {
 // ── WATCH FEST PAGE ─────────────────────────────────────────────────────────
 
 function WatchFestPage({ data, loading }) {
-  const [activeTab, setActiveTab] = useState('dodgers')
+  const [activeTab, setActiveTab] = useState('all')
   const allEvents = Array.isArray(data.watchfest) ? data.watchfest.filter(item => item.active !== 'no') : []
   const worldCupEvents = allEvents.filter(item => getWatchfestCategory(item) === 'worldcup')
   const dodgerEvents = allEvents.filter(item => getWatchfestCategory(item) === 'dodgers')
-  const activeEvents = activeTab === 'worldcup' ? worldCupEvents : dodgerEvents
+  const activeEvents = activeTab === 'all' ? allEvents : activeTab === 'worldcup' ? worldCupEvents : dodgerEvents
   const flagship = activeEvents.find(isFlagshipItem)
 
   const nextEvent = useMemo(() =>
@@ -1020,11 +1026,14 @@ function WatchFestPage({ data, loading }) {
         </p>
 
         <div style={{ display: 'flex', justifyContent: 'center', gap: 12, flexWrap: 'wrap', position: 'relative', zIndex: 1 }}>
+          <button className={`btn ${activeTab === 'all' ? 'btn-gold' : 'btn-outline-blue'}`} onClick={() => setActiveTab('all')}>
+            All
+          </button>
           <button className={`btn ${activeTab === 'dodgers' ? 'btn-gold' : 'btn-outline-blue'}`} onClick={() => setActiveTab('dodgers')}>
             Dodger Games
           </button>
           <button className={`btn ${activeTab === 'worldcup' ? 'btn-gold' : 'btn-outline-blue'}`} onClick={() => setActiveTab('worldcup')}>
-            World Cup
+            Goal City
           </button>
         </div>
       </section>
@@ -1035,13 +1044,15 @@ function WatchFestPage({ data, loading }) {
         <div className="container">
           <LiveBadge />
 
-          <div className="section-tag">{activeTab === 'worldcup' ? 'Goal City' : 'Dodger Fest'}</div>
-          <h2 className="section-heading mb-8" style={{ color: activeTab === 'worldcup' ? 'var(--gold)' : 'var(--blue)' }}>
-            {activeTab === 'worldcup' ? 'WORLD CUP WATCH PARTIES' : 'DODGER GAME NIGHTS'}
+          <div className="section-tag">{activeTab === 'worldcup' ? 'Goal City' : activeTab === 'all' ? 'Watch Fest' : 'Dodger Fest'}</div>
+          <h2 className="section-heading mb-8" style={{ color: activeTab === 'worldcup' ? 'var(--gold)' : activeTab === 'all' ? 'var(--cream)' : 'var(--blue)' }}>
+            {activeTab === 'worldcup' ? 'GOAL CITY WATCH PARTIES' : activeTab === 'all' ? 'ALL WATCH FEST EVENTS' : 'DODGER GAME NIGHTS'}
           </h2>
           <p style={{ fontFamily: 'var(--font-label)', fontSize: 14, color: 'var(--muted)', marginBottom: 28, maxWidth: 760 }}>
             {activeTab === 'worldcup'
               ? 'Goal City is the flagship World Cup identity inside Watch Fest. Use this tab for match flyers, kickoff times, venues, and ticket links. For the biggest games, the flagship outdoor event can live at The Shops on 4th & Main with vendors, drinks, activities, and live music.'
+              : activeTab === 'all'
+              ? 'All Watch Fest events across both Dodger Fest and Goal City. Baseball nights, World Cup watch parties, and more across the Latin District.'
               : 'Dodger Fest is the baseball lane inside Watch Fest. Use this tab for Dodgers watch-night flyers, featured game schedules, and supporting venue activations across the district.'}
           </p>
 
@@ -1146,10 +1157,12 @@ function WatchFestPage({ data, loading }) {
             </div>
           ) : (
             <div className="empty-state">
-              <div className="empty-state__icon">{activeTab === 'worldcup' ? '⚽' : '⚾'}</div>
+              <div className="empty-state__icon">{activeTab === 'worldcup' ? '⚽' : activeTab === 'all' ? '🏟️' : '⚾'}</div>
               <p>
                 {activeTab === 'worldcup'
                   ? 'No World Cup events yet — add rows in the WatchFest tab with category set to worldcup.'
+                  : activeTab === 'all'
+                  ? 'No Watch Fest events yet — add rows in the WatchFest tab.'
                   : 'No Dodger games yet — add rows in the WatchFest tab with category set to dodgers.'}
               </p>
             </div>
