@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { BrowserRouter, Routes, Route, Link, NavLink, useNavigate } from 'react-router-dom'
 import MediaCarousel from './MediaCarousel'
+import Resources from './Resources'
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
@@ -44,6 +45,23 @@ const STATUS_COLORS = {
 }
 
 // ── Utilities ───────────────────────────────────────────────────────────────
+
+// ── Image URL strategy ──────────────────────────────────────────────────────
+// Google Form file uploads produce Drive share links — these are intake only.
+// They require auth and can break at any time as permanent image sources.
+//
+// Workflow:
+//   1. Venue submits form → flyer/venue images land in Google Drive as upload links.
+//   2. Admin reviews the submission in Sheets.
+//   3. Admin re-hosts the image (e.g., uploads to Drive with "anyone with link can view",
+//      Cloudinary, or any public CDN), then pastes the stable public URL into
+//      flyer_image_url / venue_image_url columns.
+//   4. Admin sets status = approved → row goes live on the site.
+//
+// If flyer_image_url or venue_image_url is empty, EventCard / WatchFest cards
+// already skip the image block rather than rendering a broken <img>.
+// convertDriveUrl handles the common Drive /d/{id}/ pattern as a best-effort
+// conversion for legacy rows — do not rely on it for new submissions.
 
 function convertDriveUrl(url) {
   if (!url) return ''
@@ -128,6 +146,35 @@ function useKickoffStatus(kickoffDatetime) {
   }, [kickoffDatetime])
   return s
 }
+
+// ── Events Sheet — target column schema ─────────────────────────────────────
+// Existing rows without a status column are shown by default (backwards compatible).
+// New submissions via Google Form should land with status = pending and only
+// become visible after an admin sets status = approved.
+//
+// Column name        | Type / Notes
+// ───────────────────|────────────────────────────────────────────────────────
+// id                 | auto or manual unique ID
+// status             | pending | approved | rejected  (see moderation filter below)
+// event_name         | text (required)
+// date               | YYYY-MM-DD preferred
+// time               | HH:MM AM/PM
+// end_time           | HH:MM AM/PM
+// venue              | venue name string
+// address            | street address
+// category           | friday_night | watch_fest | crawl | special
+// description        | 2–3 sentence event description
+// ticket_link        | URL
+// video_url          | YouTube or TikTok URL
+// flyer_image_url    | stable public URL — do NOT use raw Form upload Drive link here
+// venue_image_url    | stable public URL — same note as above
+// submitted_by_email | from Form submission
+// submitted_at       | ISO timestamp
+// notes_internal     | admin-only notes, never rendered on site
+//
+// STATUS MODERATION FILTER (applied in EventsPage and WatchFestPage):
+//   if row.status field exists → only show when status === 'approved' (case-insensitive)
+//   if row has no status field → show as before (legacy rows stay visible)
 
 // ── useSheets hook ──────────────────────────────────────────────────────────
 
@@ -403,6 +450,7 @@ const NAV_LINKS = [
   { to: '/events',       label: 'Events' },
   { to: '/friday-night', label: 'Friday Night Latin District' },
   { to: '/bar-crawl',    label: 'Bar Crawl' },
+  { to: '/resources',    label: 'Resources' },
   { to: '/contact',      label: 'Contact' },
 ]
 
@@ -788,6 +836,7 @@ function EventsPage({ data, loading }) {
 
   const events = data.events.filter(e => {
     if (e.active === 'no') return false
+    if (e.status && e.status.toLowerCase() !== 'approved') return false
     if (filter === 'all') return true
     return e.event_type === filter
   })
@@ -997,7 +1046,11 @@ function FridayNightPage({ data, loading }) {
 
 function WatchFestPage({ data, loading }) {
   const [activeTab, setActiveTab] = useState('all')
-  const allEvents = Array.isArray(data.watchfest) ? data.watchfest.filter(item => item.active !== 'no') : []
+  const allEvents = Array.isArray(data.watchfest) ? data.watchfest.filter(item => {
+    if (item.active === 'no') return false
+    if (item.status && item.status.toLowerCase() !== 'approved') return false
+    return true
+  }) : []
   const worldCupEvents = allEvents.filter(item => getWatchfestCategory(item) === 'worldcup')
   const dodgerEvents = allEvents.filter(item => getWatchfestCategory(item) === 'dodgers')
   const activeEvents = activeTab === 'all' ? allEvents : activeTab === 'worldcup' ? worldCupEvents : dodgerEvents
@@ -1962,6 +2015,7 @@ export default function App() {
         <Route path="/watchfest" element={<><ScrollToTop /><WatchFestPage data={data} loading={loading} /></>} />
         <Route path="/bar-crawl" element={<><ScrollToTop /><BarCrawlPage data={data} loading={loading} /></>} />
         <Route path="/submit-event" element={<><ScrollToTop /><SubmitEventPage /></>} />
+        <Route path="/resources" element={<><ScrollToTop /><Resources /></>} />
         <Route path="/contact" element={<><ScrollToTop /><ContactPage /></>} />
         <Route path="*" element={
           <div className="page-top" style={{ textAlign: 'center', padding: '120px 24px' }}>
