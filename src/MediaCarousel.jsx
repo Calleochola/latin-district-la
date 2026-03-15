@@ -1,8 +1,20 @@
 import { useState, useRef } from 'react'
 
+function getYouTubeVideoId(url) {
+  const match = url.match(/(?:youtube\.com\/(?:watch\?.*v=|embed\/)|youtu\.be\/)([^&?/]+)/)
+  return match ? match[1] : null
+}
+
 function getTikTokVideoId(url) {
   const match = url.match(/\/video\/(\d+)/)
   return match ? match[1] : null
+}
+
+function convertDriveUrl(url) {
+  if (!url) return ''
+  const match = url.match(/\/d\/([^/]+)\//)
+  if (match) return `https://drive.google.com/uc?export=view&id=${match[1]}`
+  return url
 }
 
 export default function MediaCarousel({ mediaUrls, mediaTypes }) {
@@ -16,7 +28,8 @@ export default function MediaCarousel({ mediaUrls, mediaTypes }) {
 
   const total = urls.length
   const type = types[current] || 'image'
-  const url = urls[current]
+  const rawUrl = urls[current]
+  const url = type === 'image' ? convertDriveUrl(rawUrl) : rawUrl
 
   const prev = () => setCurrent(i => (i - 1 + total) % total)
   const next = () => setCurrent(i => (i + 1) % total)
@@ -30,19 +43,34 @@ export default function MediaCarousel({ mediaUrls, mediaTypes }) {
     touchStartX.current = null
   }
 
-  const videoId = type === 'tiktok' ? getTikTokVideoId(url) : null
+  const tiktokId = type === 'tiktok' ? getTikTokVideoId(url) : null
+  const youtubeId = type === 'youtube' ? getYouTubeVideoId(url) : null
+  const isVideo = type === 'youtube' || type === 'tiktok'
 
   return (
     <div className="media-carousel" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
-      <div className="media-carousel__track">
+      <div className={`media-carousel__track${type === 'youtube' ? ' media-carousel__track--16x9' : ''}`}>
         {type === 'tiktok' ? (
-          videoId ? (
+          tiktokId ? (
             <iframe
-              src={`https://www.tiktok.com/embed/v2/${videoId}`}
+              src={`https://www.tiktok.com/embed/v2/${tiktokId}`}
               className="media-carousel__tiktok"
               allowFullScreen
               allow="encrypted-media"
               title="TikTok video"
+              loading="lazy"
+            />
+          ) : (
+            <div className="media-carousel__placeholder">Video unavailable</div>
+          )
+        ) : type === 'youtube' ? (
+          youtubeId ? (
+            <iframe
+              src={`https://www.youtube.com/embed/${youtubeId}`}
+              className="media-carousel__tiktok"
+              allowFullScreen
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              title="YouTube video"
               loading="lazy"
             />
           ) : (

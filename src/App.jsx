@@ -246,8 +246,8 @@ function KickoffStatus({ kickoffDatetime }) {
   if (!s) return null
   if (s.state === 'live') return (
     <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: 'var(--font-label)', fontSize: 12, fontWeight: 700, letterSpacing: '.1em', color: '#00C853', background: 'rgba(0,200,83,.12)', border: '1px solid rgba(0,200,83,.3)', borderRadius: 2, padding: '4px 10px', marginBottom: 8 }}>
-      <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#00C853', display: 'inline-block' }} />
-      LIVE NOW
+      <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#00C853', display: 'inline-block', animation: 'pulse-live 1.5s ease-in-out infinite' }} />
+      🔴 LIVE NOW
     </div>
   )
   if (s.state === 'final') return (
@@ -273,6 +273,13 @@ function getWatchfestCategory(item) {
   return 'worldcup'
 }
 
+function getVideoType(url) {
+  if (!url) return null
+  if (url.includes('youtube.com') || url.includes('youtu.be')) return 'youtube'
+  if (url.includes('tiktok.com')) return 'tiktok'
+  return null
+}
+
 function WatchFestCard({ item }) {
   const isDodgers = getWatchfestCategory(item) === 'dodgers'
   const accentColor = isDodgers ? 'var(--blue)' : 'var(--gold)'
@@ -283,11 +290,12 @@ function WatchFestCard({ item }) {
   const crowdLevels = ['Low', 'Medium', 'High', 'Packed']
   const crowdColors = { Low: '#00C853', Medium: '#FFB300', High: '#FF6D00', Packed: '#FF1744' }
 
-  // Build carousel from individual media fields (in order: flyer → venue → video)
+  // Build carousel: video first, then flyer, then venue. Apply Drive URL conversion to images.
+  const videoType = getVideoType(item.video_url)
   const mediaEntries = []
-  if (item.flyer_image_url)  mediaEntries.push({ url: item.flyer_image_url, type: 'image' })
-  if (item.venue_image_url)  mediaEntries.push({ url: item.venue_image_url, type: 'image' })
-  if (item.video_url)        mediaEntries.push({ url: item.video_url,        type: 'tiktok' })
+  if (item.video_url && videoType)      mediaEntries.push({ url: item.video_url,                      type: videoType })
+  if (item.flyer_image_url)             mediaEntries.push({ url: convertDriveUrl(item.flyer_image_url), type: 'image' })
+  if (item.venue_image_url)             mediaEntries.push({ url: convertDriveUrl(item.venue_image_url), type: 'image' })
   const mediaUrls  = mediaEntries.map(m => m.url).join('|')
   const mediaTypes = mediaEntries.map(m => m.type).join('|')
 
@@ -297,22 +305,18 @@ function WatchFestCard({ item }) {
         <MediaCarousel mediaUrls={mediaUrls} mediaTypes={mediaTypes} />
       )}
       <div className="event-card__body">
-        {/* Team flags */}
+        {/* ESPN Header: flags → stage → match name */}
         {item.team_flags && (
-          <div style={{ fontSize: 22, marginBottom: 6, letterSpacing: '0.05em' }}>{item.team_flags}</div>
+          <div style={{ fontSize: 24, marginBottom: 4, letterSpacing: '0.05em' }}>{item.team_flags}</div>
         )}
-
-        {/* Match name */}
-        <div style={{ fontFamily: 'var(--font-heading)', fontSize: 'clamp(15px, 4vw, 20px)', color: 'var(--cream)', lineHeight: 1.1, marginBottom: 4 }}>
-          {title}
-        </div>
-
-        {/* Match stage */}
         {item.match_stage && (
-          <div style={{ fontFamily: 'var(--font-label)', fontSize: 11, letterSpacing: '.1em', textTransform: 'uppercase', color: accentColor, marginBottom: 8 }}>
+          <div style={{ fontFamily: 'var(--font-label)', fontSize: 11, letterSpacing: '.1em', textTransform: 'uppercase', color: accentColor, marginBottom: 4 }}>
             {item.match_stage}
           </div>
         )}
+        <div style={{ fontFamily: 'var(--font-heading)', fontSize: 'clamp(15px, 4vw, 20px)', color: 'var(--cream)', lineHeight: 1.1, marginBottom: 8 }}>
+          {title}
+        </div>
 
         {/* Badges */}
         <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', marginBottom: 8 }}>
@@ -330,7 +334,7 @@ function WatchFestCard({ item }) {
         {/* Kickoff countdown / LIVE NOW / FINAL */}
         <KickoffStatus kickoffDatetime={item.kickoff_datetime} />
 
-        {/* Date · time · venue */}
+        {/* Date · time · venue · tailgate */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginBottom: 8, fontFamily: 'var(--font-label)', fontSize: 13, color: 'var(--muted)' }}>
           {(item.date || item.time) && (
             <span>📅 {formatDate(item.date)}{item.time ? ` · ${item.time}` : ''}</span>
@@ -387,11 +391,10 @@ function SkeletonCard() {
 // ── Nav ─────────────────────────────────────────────────────────────────────
 
 const NAV_LINKS = [
-  { to: '/events',       label: 'Events' },
-  { to: '/calendar',     label: 'Calendar' },
-  { to: '/venues',       label: 'Venues' },
-  { to: '/friday-night', label: 'Friday Night' },
+  { to: '/',             label: 'Home' },
   { to: '/watchfest',    label: 'Watch Fest' },
+  { to: '/events',       label: 'Events' },
+  { to: '/friday-night', label: 'Friday Night Latin District' },
   { to: '/bar-crawl',    label: 'Bar Crawl' },
   { to: '/contact',      label: 'Contact' },
 ]
@@ -409,7 +412,7 @@ function Nav() {
 
         <div className="nav__links">
           {NAV_LINKS.map(l => (
-            <NavLink key={l.to} to={l.to} className={({ isActive }) => `nav__link${isActive ? ' active' : ''}`}>
+            <NavLink key={l.to} to={l.to} end={l.to === '/'} className={({ isActive }) => `nav__link${isActive ? ' active' : ''}`}>
               {l.label}
             </NavLink>
           ))}
@@ -426,7 +429,7 @@ function Nav() {
       <div className={`drawer${drawerOpen ? ' open' : ''}`}>
         <button className="drawer__close" onClick={() => setDrawerOpen(false)}>✕</button>
         {NAV_LINKS.map(l => (
-          <NavLink key={l.to} to={l.to} className="drawer__link" onClick={() => setDrawerOpen(false)}>
+          <NavLink key={l.to} to={l.to} end={l.to === '/'} className="drawer__link" onClick={() => setDrawerOpen(false)}>
             {l.label}
           </NavLink>
         ))}
