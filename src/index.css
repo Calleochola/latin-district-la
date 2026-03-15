@@ -34,11 +34,11 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
 ul { list-style: none; }
 
 /* ── Neon Text Shadows ──────────────────────────────── */
-.neon-blue   { text-shadow: 0 0 8px #00E5FF, 0 0 20px #00E5FF, 0 0 40px #00E5FF; }
-.neon-red    { text-shadow: 0 0 8px #FF1744, 0 0 20px #FF1744, 0 0 40px #FF1744; }
-.neon-purple { text-shadow: 0 0 8px #D500F9, 0 0 20px #D500F9, 0 0 40px #D500F9; }
-.neon-gold   { text-shadow: 0 0 8px #FFB300, 0 0 20px #FFB300, 0 0 40px #FFB300; }
-.neon-white  { text-shadow: 0 0 8px #fff, 0 0 20px rgba(255,255,255,.5); }
+.neon-blue   { text-shadow: 0 0 4px #00E5FF, 0 0 12px rgba(0,229,255,.55); }
+.neon-red    { text-shadow: 0 0 4px #FF1744, 0 0 12px rgba(255,23,68,.55); }
+.neon-purple { text-shadow: 0 0 4px #D500F9, 0 0 12px rgba(213,0,249,.55); }
+.neon-gold   { text-shadow: 0 0 4px #FFB300, 0 0 12px rgba(255,179,0,.55); }
+.neon-white  { text-shadow: 0 0 4px #fff, 0 0 10px rgba(255,255,255,.35); }
 
 /* ── Cut-corner Button ──────────────────────────────── */
 .btn {
@@ -60,15 +60,15 @@ ul { list-style: none; }
 .btn:hover  { filter: brightness(1.15); transform: translateY(-2px); }
 .btn:active { transform: translateY(0); }
 
-.btn-red    { background: var(--red);    color: #fff; box-shadow: 0 0 18px rgba(255,23,68,.5); }
-.btn-blue   { background: var(--blue);   color: #06060F; box-shadow: 0 0 18px rgba(0,229,255,.4); }
-.btn-purple { background: var(--purple); color: #fff; box-shadow: 0 0 18px rgba(213,0,249,.4); }
-.btn-gold   { background: var(--gold);   color: #06060F; box-shadow: 0 0 18px rgba(255,179,0,.4); }
+.btn-red    { background: var(--red);    color: #fff; box-shadow: 0 0 10px rgba(255,23,68,.3); }
+.btn-blue   { background: var(--blue);   color: #06060F; box-shadow: 0 0 10px rgba(0,229,255,.25); }
+.btn-purple { background: var(--purple); color: #fff; box-shadow: 0 0 10px rgba(213,0,249,.25); }
+.btn-gold   { background: var(--gold);   color: #06060F; box-shadow: 0 0 10px rgba(255,179,0,.25); }
 .btn-outline-blue {
   background: transparent;
   color: var(--blue);
   border: 1.5px solid var(--blue);
-  box-shadow: 0 0 12px rgba(0,229,255,.3), inset 0 0 12px rgba(0,229,255,.05);
+  box-shadow: 0 0 8px rgba(0,229,255,.2), inset 0 0 8px rgba(0,229,255,.03);
 }
 .btn-outline-red {
   background: transparent;
@@ -438,7 +438,7 @@ ul { list-style: none; }
 .stamp.filled {
   border-color: var(--purple);
   background: rgba(213,0,249,.15);
-  box-shadow: 0 0 12px rgba(213,0,249,.3);
+  box-shadow: 0 0 8px rgba(213,0,249,.18);
 }
 .stamp-label {
   font-family: var(--font-label);
@@ -507,14 +507,14 @@ ul { list-style: none; }
 .nav__logo img {
   height: 36px;
   width: auto;
-  filter: drop-shadow(0 0 14px rgba(0,229,255,.6));
+  filter: drop-shadow(0 0 8px rgba(0,229,255,.4));
 }
 .nav__logo-text {
   font-family: var(--font-heading);
   font-size: 22px;
   color: var(--cream);
   letter-spacing: .05em;
-  text-shadow: 0 0 14px rgba(0,229,255,.6);
+  text-shadow: 0 0 8px rgba(0,229,255,.4);
 }
 .nav__links {
   display: none;
@@ -608,7 +608,7 @@ ul { list-style: none; }
 .hero__logo {
   width: min(200px, 50vw);
   margin: 0 auto 32px;
-  filter: drop-shadow(0 0 24px rgba(0,229,255,.7));
+  filter: drop-shadow(0 0 14px rgba(0,229,255,.5));
 }
 .hero__headline {
   font-family: var(--font-heading);
@@ -945,8 +945,8 @@ ul { list-style: none; }
   position: relative;
   z-index: 1;
 }
-.neon-green { text-shadow: 0 0 8px #00C853, 0 0 20px #00C853, 0 0 40px #00C853; }
-.btn-green { background: var(--green); color: #06060F; box-shadow: 0 0 18px rgba(0,200,83,.4); }
+.neon-green { text-shadow: 0 0 4px #00C853, 0 0 12px rgba(0,200,83,.55); }
+.btn-green { background: var(--green); color: #06060F; box-shadow: 0 0 10px rgba(0,200,83,.25); }
 
 .countdown-grid {
   display: flex;
@@ -967,7 +967,7 @@ ul { list-style: none; }
   font-size: clamp(40px, 10vw, 64px);
   line-height: 1;
   color: var(--green);
-  text-shadow: 0 0 20px rgba(0,200,83,.5);
+  text-shadow: 0 0 10px rgba(0,200,83,.35);
 }
 .countdown-box__label {
   font-family: var(--font-label);
@@ -1128,10 +1128,10 @@ ul { list-style: none; }
   width: 10px; height: 10px;
   border-radius: 50%;
   background: var(--green);
-  box-shadow: 0 0 8px rgba(0,200,83,.6);
+  box-shadow: 0 0 5px rgba(0,200,83,.4);
 }
-.gc-timeline-item.halftime::before { background: var(--gold); box-shadow: 0 0 8px rgba(255,179,0,.6); }
-.gc-timeline-item.nightlife::before { background: var(--purple); box-shadow: 0 0 8px rgba(213,0,249,.6); }
+.gc-timeline-item.halftime::before { background: var(--gold); box-shadow: 0 0 5px rgba(255,179,0,.4); }
+.gc-timeline-item.nightlife::before { background: var(--purple); box-shadow: 0 0 5px rgba(213,0,249,.4); }
 .gc-timeline-time {
   font-family: var(--font-heading);
   font-size: 20px;
@@ -1282,3 +1282,82 @@ ul { list-style: none; }
   .cal-cell { min-height: 44px; padding: 4px; }
   .cal-cell__num { font-size: 14px; }
 }
+
+/* ── Media Carousel ─────────────────────────────────── */
+.media-carousel {
+  position: relative;
+  width: 100%;
+  background: #0a0a1a;
+  overflow: hidden;
+}
+.media-carousel__track {
+  width: 100%;
+  padding-top: 75%;
+  position: relative;
+}
+.media-carousel__img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.media-carousel__tiktok {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+.media-carousel__placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-label);
+  font-size: 13px;
+  color: var(--muted);
+}
+.media-carousel__arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(6,6,15,.72);
+  color: var(--cream);
+  font-size: 26px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 2;
+  transition: background .2s;
+  line-height: 1;
+  border: none;
+}
+.media-carousel__arrow:hover { background: rgba(6,6,15,.92); }
+.media-carousel__arrow--prev { left: 8px; }
+.media-carousel__arrow--next { right: 8px; }
+.media-carousel__dots {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 6px;
+  z-index: 2;
+}
+.media-carousel__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(255,255,255,.35);
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  transition: background .2s;
+}
+.media-carousel__dot.active { background: var(--blue); }

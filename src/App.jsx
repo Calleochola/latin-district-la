@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { BrowserRouter, Routes, Route, Link, NavLink, useNavigate } from 'react-router-dom'
+import MediaCarousel from './MediaCarousel'
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
@@ -124,7 +125,7 @@ function useSheets() {
 
 // ── Shared Components ───────────────────────────────────────────────────────
 
-function LiveBadge({ text = 'Updates live from Google Sheets' }) {
+function LiveBadge({ text = 'Updates live every week' }) {
   return (
     <div className="live-badge">
       <span className="live-badge__dot" />
@@ -166,6 +167,9 @@ function EventCard({ event }) {
           </a>
         )}
       </div>
+      {event.media_urls && event.media_types && (
+        <MediaCarousel mediaUrls={event.media_urls} mediaTypes={event.media_types} />
+      )}
     </div>
   )
 }
@@ -193,6 +197,9 @@ function VenueCard({ venue }) {
           </div>
         )}
       </div>
+      {venue.media_urls && venue.media_types && (
+        <MediaCarousel mediaUrls={venue.media_urls} mediaTypes={venue.media_types} />
+      )}
     </div>
   )
 }
@@ -248,6 +255,9 @@ function WatchFestCard({ item }) {
           </button>
         )}
       </div>
+      {item.media_urls && item.media_types && (
+        <MediaCarousel mediaUrls={item.media_urls} mediaTypes={item.media_types} />
+      )}
     </div>
   )
 }
@@ -703,6 +713,27 @@ function FridayNightPage({ data, loading }) {
 
       <NeonDivider />
 
+      {/* Live Lineup */}
+      <section className="section">
+        <div className="container">
+          <LiveBadge text="Live lineup updated every week" />
+          <div className="section-tag">This Friday</div>
+          <h2 className="section-heading neon-red mb-32" style={{ color: 'var(--red)' }}>LIVE LINEUP</h2>
+          {loading ? (
+            <div className="events-grid">{[1,2,3].map(i => <SkeletonCard key={i} />)}</div>
+          ) : events.length > 0 ? (
+            <div className="events-grid">{events.map((e, i) => <EventCard key={i} event={e} />)}</div>
+          ) : (
+            <div className="empty-state">
+              <div className="empty-state__icon">🎵</div>
+              <p>Friday night lineup drops soon — follow @LatinDistrictLA for updates.</p>
+            </div>
+          )}
+        </div>
+      </section>
+
+      <NeonDivider />
+
       {/* Genre Tiles */}
       <section className="section" style={{ background: '#080812' }}>
         <div className="container">
@@ -741,27 +772,6 @@ function FridayNightPage({ data, loading }) {
               </div>
             ))}
           </div>
-        </div>
-      </section>
-
-      <NeonDivider />
-
-      {/* Live Lineup */}
-      <section className="section">
-        <div className="container">
-          <LiveBadge text="Live lineup from Google Sheets" />
-          <div className="section-tag">This Friday</div>
-          <h2 className="section-heading neon-red mb-32" style={{ color: 'var(--red)' }}>LIVE LINEUP</h2>
-          {loading ? (
-            <div className="events-grid">{[1,2,3].map(i => <SkeletonCard key={i} />)}</div>
-          ) : events.length > 0 ? (
-            <div className="events-grid">{events.map((e, i) => <EventCard key={i} event={e} />)}</div>
-          ) : (
-            <div className="empty-state">
-              <div className="empty-state__icon">🎵</div>
-              <p>Friday night lineup drops soon — follow @LatinDistrictLA for updates.</p>
-            </div>
-          )}
         </div>
       </section>
     </div>
@@ -1138,34 +1148,6 @@ function BarCrawlPage({ data, loading }) {
               </div>
             </div>
           )}
-        </div>
-      </section>
-
-      <NeonDivider />
-
-      {/* Safety */}
-      <section className="section" style={{ background: '#080812' }}>
-        <div className="container">
-          <div className="section-tag">Safety First</div>
-          <h2 className="section-heading mb-32">YOUR GUIDES HAVE YOU</h2>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 16 }}>
-            {[
-              { icon: '👥', title: 'Buddy System', desc: 'Pair up at check-in. Re-check with your buddy at every venue exit. No one walks alone.' },
-              { icon: '🗺️', title: 'Guided Every Step', desc: 'Front and rear guides escort every group transition. If you need to stop, tell a guide — never leave unannounced.' },
-              { icon: '🚗', title: 'Safe Ride Home', desc: 'Guides assist with rideshare groups at the end of the night. No one leaves without a safe plan.' },
-              { icon: '🆘', title: '"I Need Water"', desc: 'If you feel unsafe or uncomfortable at any point, say "I need water" to any guide. No questions, immediate support.' },
-              { icon: '📋', title: 'Headcount at Every Exit', desc: 'Guides count the group at every venue exit. Missing guest protocol activates within 10 minutes.' },
-              { icon: '👗', title: 'Dress Code Briefing', desc: 'Guides brief the group before entering West Eight — strict dress code and bag search enforced at the door.' },
-            ].map((s, i) => (
-              <div key={i} style={{ display: 'flex', gap: 14, alignItems: 'flex-start', padding: '14px 0', borderBottom: '1px solid rgba(255,255,255,.05)' }}>
-                <span style={{ fontSize: 24, flexShrink: 0 }}>{s.icon}</span>
-                <div>
-                  <div style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: 14, marginBottom: 3 }}>{s.title}</div>
-                  <div style={{ fontSize: 13, color: 'var(--muted)', lineHeight: 1.5 }}>{s.desc}</div>
-                </div>
-              </div>
-            ))}
-          </div>
         </div>
       </section>
 
