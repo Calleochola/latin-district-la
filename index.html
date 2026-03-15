@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" href="/logo.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Latin District LA — Multiple venues. One district. Every Friday night in DTLA." />
+    <meta property="og:title" content="Latin District LA" />
+    <meta property="og:description" content="Multiple venues. One district. Every Friday night in DTLA." />
+    <meta property="og:image" content="/logo.png" />
+    <title>Latin District LA</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow+Condensed:wght@400;500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+
+    <!-- Netlify Forms — static stubs so Netlify detects forms in this SPA at build time -->
+    <form name="contact" netlify hidden>
+      <input name="name" /><input name="email" /><input name="company" />
+      <input name="type" /><input name="subject" /><textarea name="message"></textarea>
+    </form>
+    <form name="event-submission" netlify hidden>
+      <input name="promoterName" /><input name="email" /><input name="instagram" />
+      <input name="eventName" /><input name="date" /><input name="startTime" />
+      <input name="venueName" /><input name="address" /><input name="eventType" />
+      <input name="ticketLink" /><input name="genres" /><textarea name="description"></textarea>
+      <input name="flyerUrl" />
+    </form>
+  </body>
+</html>
