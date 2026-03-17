@@ -1665,9 +1665,12 @@ function SubmitEventPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       })
+      const resBody = await res.json().catch(() => ({}))
       if (!res.ok) {
-        const body = await res.json().catch(() => ({}))
-        throw new Error(body.error || 'Submission failed')
+        throw new Error(resBody.error || 'Submission failed. Please try again.')
+      }
+      if (!resBody.ok) {
+        throw new Error(resBody.error || 'Submission failed. Please try again.')
       }
 
       setSubmitted(true)

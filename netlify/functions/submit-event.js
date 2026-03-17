@@ -1,29 +1,34 @@
 // netlify/functions/submit-event.js
 // Receives event submission from the front-end form, then forwards the payload
-// to a Google Apps Script web-app URL which appends a row to the Events sheet.
+// to a Google Apps Script Web App which appends a row to the Events sheet.
 //
-// Required Netlify env var (set in Netlify dashboard → Site settings → Env vars):
-//   APPS_SCRIPT_URL  — The deployed Apps Script URL ending in /exec
+// Required Netlify env var (Netlify dashboard → Site settings → Environment variables):
+//   APPS_SCRIPT_URL  — The deployed Apps Script /exec URL
 //
-// The Apps Script should:
-//   1. Accept POST with Content-Type: application/json
-//   2. Append the payload as a new row in the Events sheet using the column order:
-//      event_name, venue, date, time, genre, event_type, ticket_link,
-//      flyer_image_url, featured, active, tailgate_time, status,
-//      venue_image_url, video_url, crowd_level, description
-//   3. Return { "result": "success" } on success
+// ── WHY redirect: 'manual' ────────────────────────────────────────────────────
+// Google Apps Script /exec URLs respond with a 302 redirect to
+// script.googleusercontent.com before executing the script.
+// Node.js fetch with redirect:'follow' converts POST→GET on a 302 per HTTP spec,
+// stripping the request body.  Apps Script then receives a GET (no data), so
+// doPost(e) never fires and nothing is written to the sheet.
+// Fix: use redirect:'manual', detect the 3xx, and re-POST to the Location URL.
+// ─────────────────────────────────────────────────────────────────────────────
 //
-// Moderation flow (enforced by front-end defaults, never overridable by submitter):
-//   status = pending   → submitted, not yet live
-//   status = approved  → admin-approved, visible on site when active = TRUE
-//   status = rejected  → hidden
-//   active = FALSE     → never displayed even if approved (admin must flip to TRUE)
+// Events sheet column schema (exact order — must match Apps Script appendRow):
+//   event_name, venue, date, time, genre, event_type, ticket_link,
+//   flyer_image_url, featured, active, tailgate_time, status,
+//   venue_image_url, video_url, crowd_level, description
+//
+// Moderation defaults (enforced server-side, never overridable by submitter):
+//   featured = FALSE  |  active = FALSE  |  status = pending
+//   tailgate_time = ""  |  venue_image_url = ""  |  video_url = ""  |  crowd_level = ""
 //
 // TODO: Add duplicate event detection by event_name + venue + date
 // TODO: Add approved venue whitelist validation
 // TODO: Add submitted_by_email / submitted_at tracking columns
 
 export const handler = async (event) => {
+  // ── Method guard ──────────────────────────────────────────────────────────
   if (event.httpMethod !== 'POST') {
     return {
       statusCode: 405,
@@ -32,9 +37,10 @@ export const handler = async (event) => {
     }
   }
 
+  // ── Config guard ──────────────────────────────────────────────────────────
   const appsScriptUrl = process.env.APPS_SCRIPT_URL
   if (!appsScriptUrl) {
-    console.error('APPS_SCRIPT_URL env var is not set')
+    console.error('[submit-event] APPS_SCRIPT_URL env var is not set')
     return {
       statusCode: 500,
       headers: { 'Content-Type': 'application/json' },
@@ -42,10 +48,12 @@ export const handler = async (event) => {
     }
   }
 
+  // ── Parse body ────────────────────────────────────────────────────────────
   let payload
   try {
     payload = JSON.parse(event.body)
   } catch {
+    console.error('[submit-event] Invalid JSON body')
     return {
       statusCode: 400,
       headers: { 'Content-Type': 'application/json' },
@@ -53,8 +61,9 @@ export const handler = async (event) => {
     }
   }
 
-  // Enforce moderation defaults — these values must never be overridable by
-  // the submitter, regardless of what the front-end sends.
+  // ── Enforce moderation defaults ───────────────────────────────────────────
+  // These values are always overwritten server-side regardless of what the
+  // front-end sends. Admin sets featured/active/status in the sheet directly.
   const safePayload = {
     event_name:      String(payload.event_name      || '').trim(),
     venue:           String(payload.venue            || '').trim(),
@@ -64,21 +73,21 @@ export const handler = async (event) => {
     event_type:      String(payload.event_type       || '').trim(),
     ticket_link:     String(payload.ticket_link      || '').trim(),
     flyer_image_url: String(payload.flyer_image_url  || '').trim(),
-    // These are always forced to safe defaults — admin sets them in Sheets
     featured:        'FALSE',
     active:          'FALSE',
     tailgate_time:   '',
     status:          'pending',
-    venue_image_url: '',  // Future: support venue image upload
+    venue_image_url: '',
     video_url:       '',
     crowd_level:     '',
     description:     String(payload.description      || '').trim(),
   }
 
-  // Basic server-side required field guard
+  // ── Required field guard ──────────────────────────────────────────────────
   const required = ['event_name', 'venue', 'date', 'time', 'genre', 'event_type', 'flyer_image_url', 'description']
   const missing = required.filter(k => !safePayload[k])
   if (missing.length) {
+    console.error('[submit-event] Missing required fields:', missing)
     return {
       statusCode: 400,
       headers: { 'Content-Type': 'application/json' },
@@ -86,31 +95,75 @@ export const handler = async (event) => {
     }
   }
 
-  try {
-    const res = await fetch(appsScriptUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(safePayload),
-      redirect: 'follow',
-    })
-    const text = await res.text()
+  // ── POST to Apps Script (redirect-safe) ───────────────────────────────────
+  const fetchBody = JSON.stringify(safePayload)
+  const fetchHeaders = { 'Content-Type': 'application/json' }
 
-    if (!res.ok) {
-      console.error('Apps Script error:', res.status, text)
-      throw new Error(`Apps Script returned ${res.status}`)
+  console.log('[submit-event] Sending to Apps Script:', appsScriptUrl)
+
+  try {
+    // Step 1: POST with redirect:manual so we control redirect handling
+    let res = await fetch(appsScriptUrl, {
+      method: 'POST',
+      headers: fetchHeaders,
+      body: fetchBody,
+      redirect: 'manual',
+    })
+
+    console.log('[submit-event] Initial response status:', res.status)
+
+    // Step 2: If Google returned a redirect (302/303), manually re-POST to
+    // the Location URL. This preserves the POST method and the body, which
+    // a standard redirect:follow would lose.
+    if (res.status >= 300 && res.status < 400) {
+      const location = res.headers.get('location') || res.headers.get('Location')
+      if (!location) {
+        throw new Error(`Apps Script redirect (${res.status}) had no Location header`)
+      }
+      console.log('[submit-event] Following redirect (preserving POST) to:', location)
+      res = await fetch(location, {
+        method: 'POST',
+        headers: fetchHeaders,
+        body: fetchBody,
+        redirect: 'manual',
+      })
+      console.log('[submit-event] Post-redirect response status:', res.status)
     }
 
+    // Step 3: Read and validate the Apps Script response body
+    const responseText = await res.text()
+    console.log('[submit-event] Apps Script raw response:', responseText)
+
+    if (!res.ok) {
+      throw new Error(`Apps Script returned HTTP ${res.status}: ${responseText}`)
+    }
+
+    // Verify Apps Script confirms success in its response body
+    let scriptResult
+    try {
+      scriptResult = JSON.parse(responseText)
+    } catch {
+      throw new Error(`Apps Script returned non-JSON response: ${responseText}`)
+    }
+
+    if (scriptResult.result !== 'success') {
+      const msg = scriptResult.message || scriptResult.error || responseText
+      throw new Error(`Apps Script reported failure: ${msg}`)
+    }
+
+    console.log('[submit-event] Success — row written to sheet')
     return {
       statusCode: 200,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ok: true }),
     }
+
   } catch (err) {
-    console.error('submit-event error:', err)
+    console.error('[submit-event] Error:', err.message)
     return {
       statusCode: 500,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ error: 'Submission failed. Please try again.' }),
+      body: JSON.stringify({ error: err.message || 'Submission failed. Please try again.' }),
     }
   }
 }
