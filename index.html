@@ -22,12 +22,14 @@
       <input name="name" /><input name="email" /><input name="company" />
       <input name="type" /><input name="subject" /><textarea name="message"></textarea>
     </form>
+    <!-- event-submission stub kept for Netlify detection; actual submissions go via /.netlify/functions/submit-event → Apps Script → Google Sheet -->
     <form name="event-submission" netlify hidden>
-      <input name="promoterName" /><input name="email" /><input name="instagram" />
-      <input name="eventName" /><input name="date" /><input name="startTime" />
-      <input name="venueName" /><input name="address" /><input name="eventType" />
-      <input name="ticketLink" /><input name="genres" /><textarea name="description"></textarea>
-      <input name="flyerUrl" />
+      <input name="event_name" /><input name="venue" /><input name="date" />
+      <input name="time" /><input name="genre" /><input name="event_type" />
+      <input name="ticket_link" /><input name="flyer_image_url" />
+      <input name="featured" /><input name="active" /><input name="tailgate_time" />
+      <input name="status" /><input name="venue_image_url" /><input name="video_url" />
+      <input name="crowd_level" /><textarea name="description"></textarea>
     </form>
   </body>
 </html>

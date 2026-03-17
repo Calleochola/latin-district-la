@@ -30,6 +30,20 @@ const GENRES = [
   { name: 'Throwback Hits', sub: 'Y2K & classics' },
 ]
 
+// ── Controlled dropdown values for event submission form ────────────────────
+// These are the only accepted genre values — do not allow free-text entry.
+const GENRE_OPTIONS = [
+  'Reggaeton', 'Latin House', 'House', 'Afrobeats', 'Hip Hop',
+  'Open Format', 'Dembow', 'Salsa', 'Bachata', 'Cumbia',
+  'Regional Mexican', 'Baile Funk', 'Amapiano', 'Throwbacks',
+]
+
+// These are the only accepted event type values — do not allow free-text entry.
+const EVENT_TYPE_OPTIONS = [
+  'Party', 'Club Night', 'Watch Party', 'Tailgate', 'Day Party',
+  'After Party', 'Festival', 'Concert', 'Special Event',
+]
+
 const BADGE_COLORS = {
   friday_night: { bg: 'rgba(255,23,68,.2)',   color: '#FF1744', label: 'Friday Night' },
   watch_fest:   { bg: 'rgba(255,179,0,.2)',   color: '#FFB300', label: 'Watch Fest' },
@@ -448,6 +462,7 @@ const NAV_LINKS = [
   { to: '/',             label: 'Home' },
   { to: '/watchfest',    label: 'Watch Fest' },
   { to: '/events',       label: 'Events' },
+  { to: '/calendar',     label: 'Calendar' },
   { to: '/friday-night', label: 'Friday Night Latin District' },
   { to: '/bar-crawl',    label: 'Bar Crawl' },
   { to: '/resources',    label: 'Resources' },
@@ -539,8 +554,8 @@ function HomePage({ data, loading }) {
         <div className="hero__content">
           <img src="/logo.png" alt="Latin District LA" className="hero__logo" onError={e => e.target.style.display = 'none'} />
           <div className="hero__headline">
-            <div className="neon-red" style={{ color: 'var(--red)' }}>LATIN</div>
-            <div className="neon-blue" style={{ color: 'var(--blue)' }}>DISTRICT</div>
+            <div className="neon-white" style={{ color: '#fff' }}>LATIN</div>
+            <div className="neon-white" style={{ color: '#fff' }}>DISTRICT</div>
           </div>
           <p className="hero__sub">Multiple venues. One district. Every Friday night in DTLA.</p>
           <div className="hero__buttons">
@@ -1527,29 +1542,140 @@ function BarCrawlPage({ data, loading }) {
 
 // ── SUBMIT EVENT PAGE ───────────────────────────────────────────────────────
 
+// ── Cloudinary upload helper ─────────────────────────────────────────────────
+// Uploads a file directly to Cloudinary using an unsigned upload preset.
+// Returns a stable hosted URL (secure_url).
+//
+// Required env vars (set in .env.local and Netlify site settings):
+//   VITE_CLOUDINARY_CLOUD_NAME    — your Cloudinary cloud name
+//   VITE_CLOUDINARY_UPLOAD_PRESET — an unsigned upload preset (Cloudinary dashboard)
+//
+// Future: call this same function for venue_image_url when that upload is added.
+async function uploadToCloudinary(file) {
+  const cloudName    = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME
+  const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET
+  if (!cloudName || !uploadPreset) throw new Error('Cloudinary is not configured')
+
+  const fd = new FormData()
+  fd.append('file', file)
+  fd.append('upload_preset', uploadPreset)
+
+  const res = await fetch(
+    `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
+    { method: 'POST', body: fd }
+  )
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.error?.message || 'Image upload failed')
+  }
+  const data = await res.json()
+  return data.secure_url
+}
+
 function SubmitEventPage() {
   const [form, setForm] = useState({
-    promoterName: '', email: '', eventName: '', date: '', startTime: '',
-    venueName: '', address: '', eventType: '', genres: [],
-    ticketLink: '', instagram: '', description: '',
+    event_name:  '',
+    venue:       '',
+    date:        '',
+    time:        '',
+    genre:       '',
+    event_type:  '',
+    ticket_link: '',
+    description: '',
   })
-  const [submitted, setSubmitted] = useState(false)
+  const [flyerFile,    setFlyerFile]    = useState(null)
+  const [flyerPreview, setFlyerPreview] = useState(null)
+  const [submitting,   setSubmitting]   = useState(false)
+  const [uploadError,  setUploadError]  = useState(null)
+  const [formError,    setFormError]    = useState(null)
+  const [submitted,    setSubmitted]    = useState(false)
 
   const set = (key) => (e) => setForm(prev => ({ ...prev, [key]: e.target.value }))
-  const toggleGenre = (g) => setForm(prev => ({
-    ...prev,
-    genres: prev.genres.includes(g) ? prev.genres.filter(x => x !== g) : [...prev.genres, g],
-  }))
 
-  const handleSubmit = (e) => {
+  const handleFlyerChange = (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    setFlyerFile(file)
+    setFlyerPreview(URL.createObjectURL(file))
+    setUploadError(null)
+  }
+
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    fetch('/', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: encode({ 'form-name': 'event-submission', ...form, genres: form.genres.join(', ') }),
-    })
-      .catch(err => console.error('Form error:', err))
-      .finally(() => setSubmitted(true))
+    setFormError(null)
+    setUploadError(null)
+
+    // ── Client-side validation ───────────────────────────────────────────────
+    if (!flyerFile) {
+      setUploadError('Please upload a flyer image before submitting.')
+      return
+    }
+    if (form.ticket_link && !/^https?:\/\//.test(form.ticket_link)) {
+      setFormError('Ticket link must start with http:// or https://')
+      return
+    }
+
+    setSubmitting(true)
+    try {
+      // 1. Upload flyer → Cloudinary → stable public URL
+      let flyer_image_url = ''
+      try {
+        flyer_image_url = await uploadToCloudinary(flyerFile)
+      } catch {
+        setUploadError('Image upload failed. Please try again.')
+        setSubmitting(false)
+        return
+      }
+
+      // 2. Build payload matching Events sheet schema exactly.
+      //    All moderation defaults are enforced here and re-enforced server-side.
+      //
+      //    Moderation review workflow:
+      //      pending  = submitted, not live (default for all new submissions)
+      //      approved = admin-approved, visible on site when active = TRUE
+      //      rejected = hidden
+      //      active   = TRUE required to display (admin sets after approval)
+      //
+      //    TODO: add duplicate check (event_name + venue + date) before submitting
+      //    TODO: validate venue against approved venue whitelist when available
+      //    TODO: capture submitted_by_email / submitted_at for admin tracking
+      const payload = {
+        event_name:      form.event_name.trim(),
+        venue:           form.venue.trim(),
+        date:            form.date,
+        time:            form.time,
+        genre:           form.genre,
+        event_type:      form.event_type,
+        ticket_link:     form.ticket_link.trim(),
+        flyer_image_url,
+        // Moderation defaults — never overridable by submitter
+        featured:        'FALSE',
+        active:          'FALSE',
+        tailgate_time:   '',
+        status:          'pending',
+        venue_image_url: '',  // Future: add venue image upload (same Cloudinary flow)
+        video_url:       '',
+        crowd_level:     '',
+        description:     form.description.trim(),
+      }
+
+      // 3. POST to Netlify function → forwarded to Apps Script → written to sheet
+      const res = await fetch('/.netlify/functions/submit-event', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        throw new Error(body.error || 'Submission failed')
+      }
+
+      setSubmitted(true)
+    } catch (err) {
+      setFormError(err.message || 'Submission failed. Please try again.')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   if (submitted) return (
@@ -1557,8 +1683,9 @@ function SubmitEventPage() {
       <div className="success-screen">
         <div className="success-icon">✅</div>
         <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: 48, marginBottom: 12 }}>EVENT SUBMITTED!</h2>
-        <p style={{ fontFamily: 'var(--font-label)', fontSize: 16, color: 'var(--muted)', maxWidth: 400, margin: '0 auto 32px' }}>
-          We'll review your event and reach out to {form.email} within 48 hours.
+        <p style={{ fontFamily: 'var(--font-label)', fontSize: 16, color: 'var(--muted)', maxWidth: 440, margin: '0 auto 32px', lineHeight: 1.6 }}>
+          Your event is now in review. Once approved it will appear on the calendar and events pages.
+          Our team typically reviews within 48 hours.
         </p>
         <Link to="/events" className="btn btn-blue">View All Events →</Link>
       </div>
@@ -1570,19 +1697,22 @@ function SubmitEventPage() {
       <section className="section">
         <div className="container">
           <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 48 }}>
-            {/* Aside */}
+
+            {/* Info aside */}
             <div>
-              <div className="section-tag">For Promoters</div>
+              <div className="section-tag">For Promoters &amp; Organizers</div>
               <h1 className="section-heading neon-blue mb-16">SUBMIT YOUR EVENT</h1>
               <p style={{ fontFamily: 'var(--font-body)', fontSize: 15, color: 'var(--muted)', marginBottom: 24, lineHeight: 1.6 }}>
                 Get your Latin music event in front of thousands of DTLA nightlife attendees.
-                Submit below and our team will review and list it within 48 hours.
+                All genres welcome — not just Friday Night Latin District.
+                Submit below and our team will review within 48 hours.
               </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 {[
                   { icon: '📣', title: 'Reach The District', desc: 'Your event seen by our full Friday night audience.' },
                   { icon: '🎟️', title: 'Drive Ticket Sales', desc: 'Direct ticket link on every event card.' },
                   { icon: '📱', title: 'Social Amplification', desc: 'Featured events shared to our Instagram & TikTok.' },
+                  { icon: '📅', title: 'Calendar Listing', desc: 'Your event appears on our public events calendar.' },
                 ].map((b, i) => (
                   <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
                     <span style={{ fontSize: 24, flexShrink: 0 }}>{b.icon}</span>
@@ -1597,72 +1727,157 @@ function SubmitEventPage() {
 
             {/* Form */}
             <form onSubmit={handleSubmit}>
+
+              {/* Event Name */}
+              <div className="form-group">
+                <label className="form-label">Event Name *</label>
+                <input
+                  required
+                  className="form-input"
+                  value={form.event_name}
+                  onChange={set('event_name')}
+                  placeholder="e.g. Reggaeton Fridays"
+                />
+              </div>
+
+              {/* Venue Name */}
+              <div className="form-group">
+                <label className="form-label">Venue Name *</label>
+                <input
+                  required
+                  className="form-input"
+                  value={form.venue}
+                  onChange={set('venue')}
+                  placeholder="e.g. Rhythm Room LA"
+                />
+              </div>
+
+              {/* Date + Time */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 20px' }}>
-                <div className="form-group" style={{ gridColumn: '1/-1' }}>
-                  <label className="form-label">Promoter / Organizer Name *</label>
-                  <input required className="form-input" value={form.promoterName} onChange={set('promoterName')} placeholder="Your name or company" />
-                </div>
                 <div className="form-group">
-                  <label className="form-label">Email *</label>
-                  <input required type="email" className="form-input" value={form.email} onChange={set('email')} placeholder="you@example.com" />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Instagram Handle</label>
-                  <input className="form-input" value={form.instagram} onChange={set('instagram')} placeholder="@yourhandle" />
-                </div>
-                <div className="form-group" style={{ gridColumn: '1/-1' }}>
-                  <label className="form-label">Event Name *</label>
-                  <input required className="form-input" value={form.eventName} onChange={set('eventName')} placeholder="Event name" />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Date *</label>
+                  <label className="form-label">Event Date *</label>
                   <input required type="date" className="form-input" value={form.date} onChange={set('date')} />
                 </div>
                 <div className="form-group">
                   <label className="form-label">Start Time *</label>
-                  <input required type="time" className="form-input" value={form.startTime} onChange={set('startTime')} />
+                  <input required type="time" className="form-input" value={form.time} onChange={set('time')} />
                 </div>
+              </div>
+
+              {/* Genre + Event Type */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 20px' }}>
                 <div className="form-group">
-                  <label className="form-label">Venue Name *</label>
-                  <input required className="form-input" value={form.venueName} onChange={set('venueName')} placeholder="Venue name" />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Address</label>
-                  <input className="form-input" value={form.address} onChange={set('address')} placeholder="Full address" />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Event Type *</label>
-                  <select required className="form-select" value={form.eventType} onChange={set('eventType')}>
-                    <option value="">Select type…</option>
-                    <option value="friday_night">Friday Night</option>
-                    <option value="watch_fest">Watch Fest</option>
-                    <option value="crawl">Bar Crawl</option>
-                    <option value="special">Special Event</option>
+                  <label className="form-label">Genre *</label>
+                  <select required className="form-select" value={form.genre} onChange={set('genre')}>
+                    <option value="">Select genre…</option>
+                    {GENRE_OPTIONS.map(g => <option key={g} value={g}>{g}</option>)}
                   </select>
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Ticket Link</label>
-                  <input type="url" className="form-input" value={form.ticketLink} onChange={set('ticketLink')} placeholder="https://..." />
-                </div>
-                <div className="form-group" style={{ gridColumn: '1/-1' }}>
-                  <label className="form-label">Genres (select all that apply)</label>
-                  <div className="checkbox-group">
-                    {GENRES.map(g => (
-                      <label key={g.name} className="checkbox-item">
-                        <input type="checkbox" checked={form.genres.includes(g.name)} onChange={() => toggleGenre(g.name)} />
-                        {g.name}
-                      </label>
-                    ))}
-                  </div>
-                </div>
-                <div className="form-group" style={{ gridColumn: '1/-1' }}>
-                  <label className="form-label">Event Description</label>
-                  <textarea className="form-textarea" value={form.description} onChange={set('description')} placeholder="Tell us about your event…" />
+                  <label className="form-label">Event Type *</label>
+                  <select required className="form-select" value={form.event_type} onChange={set('event_type')}>
+                    <option value="">Select type…</option>
+                    {EVENT_TYPE_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
+                  </select>
                 </div>
               </div>
-              <button type="submit" className="btn btn-blue w-full" style={{ marginTop: 8 }}>
-                Submit Event →
+
+              {/* Ticket Link (optional) */}
+              <div className="form-group">
+                <label className="form-label">
+                  Ticket Link <span style={{ color: 'var(--muted)', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(optional)</span>
+                </label>
+                <input
+                  type="url"
+                  className="form-input"
+                  value={form.ticket_link}
+                  onChange={set('ticket_link')}
+                  placeholder="https://..."
+                />
+              </div>
+
+              {/* Flyer Upload → Cloudinary */}
+              <div className="form-group">
+                <label className="form-label">Event Flyer *</label>
+                <label style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 12,
+                  border: `2px dashed ${flyerFile ? 'var(--blue)' : 'rgba(255,255,255,.18)'}`,
+                  borderRadius: 4,
+                  padding: '28px 20px',
+                  cursor: 'pointer',
+                  background: flyerFile ? 'rgba(0,229,255,.04)' : 'rgba(255,255,255,.02)',
+                  transition: 'border-color .2s, background .2s',
+                  position: 'relative',
+                }}>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer', width: '100%', height: '100%' }}
+                    onChange={handleFlyerChange}
+                  />
+                  {flyerPreview ? (
+                    <div style={{ textAlign: 'center' }}>
+                      <img
+                        src={flyerPreview}
+                        alt="Flyer preview"
+                        style={{ maxHeight: 160, maxWidth: '100%', objectFit: 'contain', borderRadius: 3, marginBottom: 8, display: 'block', margin: '0 auto 8px' }}
+                      />
+                      <div style={{ fontFamily: 'var(--font-label)', fontSize: 12, color: 'var(--blue)' }}>
+                        {flyerFile.name} · Click to change
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div style={{ fontSize: 36 }}>🖼️</div>
+                      <div style={{ fontFamily: 'var(--font-label)', fontSize: 13, color: 'var(--muted)', textAlign: 'center' }}>
+                        Click to upload flyer<br />
+                        <span style={{ fontSize: 11, opacity: .7 }}>JPG, PNG, WEBP · max 10 MB</span>
+                      </div>
+                    </>
+                  )}
+                </label>
+                {uploadError && (
+                  <div style={{ fontFamily: 'var(--font-label)', fontSize: 13, color: 'var(--red)', marginTop: 8, padding: '10px 14px', background: 'rgba(255,23,68,.08)', border: '1px solid rgba(255,23,68,.2)', borderRadius: 3 }}>
+                    {uploadError}
+                  </div>
+                )}
+              </div>
+
+              {/* Description */}
+              <div className="form-group">
+                <label className="form-label">Event Description *</label>
+                <textarea
+                  required
+                  className="form-textarea"
+                  value={form.description}
+                  onChange={set('description')}
+                  placeholder="Tell us about your event — vibe, lineup, what to expect…"
+                  rows={4}
+                />
+              </div>
+
+              {formError && (
+                <div style={{ fontFamily: 'var(--font-label)', fontSize: 13, color: 'var(--red)', marginBottom: 12, padding: '12px 16px', background: 'rgba(255,23,68,.08)', border: '1px solid rgba(255,23,68,.2)', borderRadius: 3 }}>
+                  {formError}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                className="btn btn-blue w-full"
+                disabled={submitting}
+                style={{ marginTop: 8, opacity: submitting ? .6 : 1 }}
+              >
+                {submitting ? 'Submitting…' : 'Submit Event →'}
               </button>
+
+              <p style={{ fontFamily: 'var(--font-label)', fontSize: 11, color: 'var(--muted)', textAlign: 'center', marginTop: 12, lineHeight: 1.5 }}>
+                Events are reviewed before going live. Your submission will appear as pending until approved by our team.
+              </p>
             </form>
           </div>
         </div>
@@ -1811,6 +2026,20 @@ function CalendarPage({ data, loading }) {
   const [curMonth, setCurMonth] = useState(today.getMonth())
   const [modal, setModal]       = useState(null)
 
+  // Only show approved + active items on the calendar and list
+  // Old rows without a status field continue to show for backwards compatibility.
+  const approvedEvents = useMemo(() => data.events.filter(e => {
+    if (e.active === 'no' || e.active === 'FALSE') return false
+    if (e.status && e.status.toLowerCase() !== 'approved') return false
+    return true
+  }), [data.events])
+
+  const approvedWatchfest = useMemo(() => (data.watchfest || []).filter(w => {
+    if (w.active === 'no' || w.active === 'FALSE') return false
+    if (w.status && w.status.toLowerCase() !== 'approved') return false
+    return true
+  }), [data.watchfest])
+
   const eventsByDate = useMemo(() => {
     const map = {}
     const add = (item, type) => {
@@ -1820,10 +2049,25 @@ function CalendarPage({ data, loading }) {
       if (!map[key]) map[key] = []
       map[key].push({ ...item, _type: type })
     }
-    data.events.filter(e => e.active !== 'no').forEach(e => add(e, 'event'))
-    data.watchfest.filter(w => w.active !== 'no').forEach(w => add(w, 'watchfest'))
+    approvedEvents.forEach(e => add(e, 'event'))
+    approvedWatchfest.forEach(w => add(w, 'watchfest'))
     return map
-  }, [data.events, data.watchfest])
+  }, [approvedEvents, approvedWatchfest])
+
+  // Upcoming events list — all approved items from today onward, sorted by date
+  const upcomingList = useMemo(() => {
+    const todayMs = new Date().setHours(0, 0, 0, 0)
+    const all = [
+      ...approvedEvents.map(e => ({ ...e, _type: 'event' })),
+      ...approvedWatchfest.map(w => ({ ...w, _type: 'watchfest' })),
+    ]
+    return all
+      .filter(item => {
+        const d = parseEventDate(item.date)
+        return d && d.getTime() >= todayMs
+      })
+      .sort((a, b) => parseEventDate(a.date) - parseEventDate(b.date))
+  }, [approvedEvents, approvedWatchfest])
 
   const firstDayOfMonth = new Date(curYear, curMonth, 1).getDay()
   const daysInMonth     = new Date(curYear, curMonth + 1, 0).getDate()
@@ -1917,6 +2161,73 @@ function CalendarPage({ data, loading }) {
                 {label}
               </span>
             ))}
+          </div>
+
+          {/* ── Upcoming Events List ── */}
+          <div style={{ marginTop: 48 }}>
+            <div className="section-tag">Upcoming</div>
+            <h2 className="section-heading mb-24" style={{ fontSize: 'clamp(28px, 6vw, 48px)' }}>ALL UPCOMING EVENTS</h2>
+            {loading ? (
+              <div style={{ color: 'var(--muted)', fontFamily: 'var(--font-label)', fontSize: 14 }}>Loading events…</div>
+            ) : upcomingList.length === 0 ? (
+              <div className="empty-state" style={{ padding: '32px 0' }}>
+                <div className="empty-state__icon">📅</div>
+                <p>No upcoming events yet — check back soon.</p>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                {upcomingList.map((item, i) => {
+                  const isWf   = item._type === 'watchfest'
+                  const name   = item.match_name || item.event_name || 'Event'
+                  const badge  = isWf
+                    ? { bg: 'rgba(255,179,0,.18)', color: 'var(--gold)', label: 'Watch Fest' }
+                    : (BADGE_COLORS[item.event_type] || BADGE_COLORS.special)
+                  const imgUrl = convertDriveUrl(item.flyer_image_url)
+                  return (
+                    <div
+                      key={i}
+                      style={{
+                        display: 'flex',
+                        gap: 16,
+                        alignItems: 'flex-start',
+                        padding: '16px 0',
+                        borderBottom: '1px solid rgba(255,255,255,.07)',
+                      }}
+                    >
+                      {/* Thumbnail */}
+                      <div style={{ width: 64, height: 64, flexShrink: 0, borderRadius: 3, overflow: 'hidden', background: '#0a0a1a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24 }}>
+                        {imgUrl
+                          ? <img src={imgUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" onError={e => { e.target.style.display='none'; e.target.parentNode.innerHTML='🎉' }} />
+                          : (isWf ? '⚽' : '🎉')}
+                      </div>
+                      {/* Info */}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
+                          <span className="event-card__badge" style={{ background: badge.bg, color: badge.color }}>{badge.label}</span>
+                        </div>
+                        <div style={{ fontFamily: 'var(--font-heading)', fontSize: 'clamp(16px, 4vw, 20px)', color: 'var(--cream)', lineHeight: 1.1, marginBottom: 4 }}>{name}</div>
+                        <div style={{ fontFamily: 'var(--font-label)', fontSize: 12, color: 'var(--muted)', display: 'flex', flexWrap: 'wrap', gap: '2px 12px' }}>
+                          <span>📅 {formatDate(item.date)}{item.time ? ` · ${item.time}` : ''}</span>
+                          {item.venue && <span>📍 {item.venue}</span>}
+                        </div>
+                      </div>
+                      {/* Ticket */}
+                      {item.ticket_link && (
+                        <a
+                          href={item.ticket_link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="btn btn-red"
+                          style={{ fontSize: 12, padding: '8px 14px', minHeight: 36, flexShrink: 0, alignSelf: 'center' }}
+                        >
+                          Tickets →
+                        </a>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
 
           {/* Submit CTA */}
