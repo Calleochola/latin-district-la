@@ -99,7 +99,8 @@ export const handler = async (event) => {
   const fetchBody = JSON.stringify(safePayload)
   const fetchHeaders = { 'Content-Type': 'application/json' }
 
-  console.log('[submit-event] Sending to Apps Script:', appsScriptUrl)
+  const urlHost = (() => { try { return new URL(appsScriptUrl).hostname } catch { return 'unknown' } })()
+  console.log('[submit-event] Target host:', urlHost)
 
   try {
     // Step 1: POST with redirect:manual so we control redirect handling
@@ -112,22 +113,17 @@ export const handler = async (event) => {
 
     console.log('[submit-event] Initial response status:', res.status)
 
-    // Step 2: If Google returned a redirect (302/303), manually re-POST to
-    // the Location URL. This preserves the POST method and the body, which
-    // a standard redirect:follow would lose.
-    if (res.status >= 300 && res.status < 400) {
+    // Step 2: Follow up to two redirects (Google sometimes chains
+    // /exec → googleusercontent → auth). Re-POSTing each time preserves
+    // the request body, which redirect:'follow' would strip per HTTP spec.
+    let hops = 0
+    while ((res.status >= 300 && res.status < 400) && hops < 2) {
       const location = res.headers.get('location') || res.headers.get('Location')
-      if (!location) {
-        throw new Error(`Apps Script redirect (${res.status}) had no Location header`)
-      }
-      console.log('[submit-event] Following redirect (preserving POST) to:', location)
-      res = await fetch(location, {
-        method: 'POST',
-        headers: fetchHeaders,
-        body: fetchBody,
-        redirect: 'manual',
-      })
-      console.log('[submit-event] Post-redirect response status:', res.status)
+      if (!location) throw new Error(`Redirect (${res.status}) had no Location header`)
+      console.log(`[submit-event] Redirect hop ${hops + 1} → ${location}`)
+      res = await fetch(location, { method: 'POST', headers: fetchHeaders, body: fetchBody, redirect: 'manual' })
+      console.log(`[submit-event] Post-redirect status: ${res.status}`)
+      hops++
     }
 
     // Step 3: Read and validate the Apps Script response body
@@ -163,7 +159,10 @@ export const handler = async (event) => {
     return {
       statusCode: 500,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ error: err.message || 'Submission failed. Please try again.' }),
+      body: JSON.stringify({
+        error: err.message || 'Submission failed. Please try again.',
+        detail: typeof responseText !== 'undefined' ? responseText : undefined,
+      }),
     }
   }
 }

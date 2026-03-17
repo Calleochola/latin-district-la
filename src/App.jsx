@@ -1667,10 +1667,12 @@ function SubmitEventPage() {
       })
       const resBody = await res.json().catch(() => ({}))
       if (!res.ok) {
-        throw new Error(resBody.error || 'Submission failed. Please try again.')
+        const detail = resBody.detail ? ` (${resBody.detail.slice(0, 200)})` : ''
+        throw new Error((resBody.error || 'Submission failed. Please try again.') + detail)
       }
       if (!resBody.ok) {
-        throw new Error(resBody.error || 'Submission failed. Please try again.')
+        const detail = resBody.detail ? ` (${resBody.detail.slice(0, 200)})` : ''
+        throw new Error((resBody.error || 'Submission failed. Please try again.') + detail)
       }
 
       setSubmitted(true)
