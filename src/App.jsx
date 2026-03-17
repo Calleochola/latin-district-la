@@ -35,7 +35,7 @@ const GENRES = [
 const GENRE_OPTIONS = [
   'Reggaeton', 'Latin House', 'House', 'Afrobeats', 'Hip Hop',
   'Open Format', 'Dembow', 'Salsa', 'Bachata', 'Cumbia',
-  'Regional Mexican', 'Baile Funk', 'Amapiano', 'Throwbacks',
+  'Regional Mexican', 'Baile Funk', 'Amapiano', 'Throwbacks', 'Other',
 ]
 
 // These are the only accepted event type values — do not allow free-text entry.
@@ -84,17 +84,24 @@ function convertDriveUrl(url) {
   return url
 }
 
+function parseEventDate(str) {
+  if (!str) return null
+  // YYYY-MM-DD strings are parsed as UTC midnight by the JS spec, which shifts
+  // the date backward in negative-offset timezones (e.g. LA, UTC-7/8).
+  // Re-parse as local midnight to match the exact date shown in the sheet.
+  const iso = str.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (iso) return new Date(+iso[1], +iso[2] - 1, +iso[3])
+  const d = new Date(str)
+  return isNaN(d.getTime()) ? null : d
+}
+
 function formatDate(str) {
   if (!str) return ''
   try {
-    return new Date(str).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+    const d = parseEventDate(str)
+    if (!d || isNaN(d.getTime())) return str
+    return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
   } catch { return str }
-}
-
-function parseEventDate(str) {
-  if (!str) return null
-  const d = new Date(str)
-  return isNaN(d.getTime()) ? null : d
 }
 
 // Encode form data for Netlify Forms (application/x-www-form-urlencoded)
@@ -230,7 +237,67 @@ function NeonDivider() {
   return <hr className="neon-divider" />
 }
 
+// ── Event detail modal (opened on card click) ────────────────────────────────
+
+function EventModal({ event, onClose }) {
+  const badge   = BADGE_COLORS[event.event_type] || BADGE_COLORS.special
+  const imgUrl  = convertDriveUrl(event.flyer_image_url)
+
+  useEffect(() => {
+    const handleKey = (e) => { if (e.key === 'Escape') onClose() }
+    document.addEventListener('keydown', handleKey)
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.removeEventListener('keydown', handleKey)
+      document.body.style.overflow = ''
+    }
+  }, [onClose])
+
+  return (
+    <div className="event-modal-overlay" onClick={onClose} role="dialog" aria-modal="true" aria-label="Event details">
+      <div className="event-modal" onClick={e => e.stopPropagation()}>
+        <div className="event-modal__header">
+          <button onClick={onClose} className="event-modal__close" aria-label="Close">✕</button>
+        </div>
+        <div className="event-modal__body">
+          {imgUrl && (
+            <div className="event-modal__flyer">
+              <img src={imgUrl} alt={event.event_name} loading="lazy" />
+            </div>
+          )}
+          <span className="event-card__badge" style={{ background: badge.bg, color: badge.color, display: 'inline-block', marginBottom: 12 }}>{badge.label}</span>
+          <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: 'clamp(24px, 6vw, 36px)', color: 'var(--cream)', lineHeight: 1.1, marginBottom: 14 }}>
+            {event.event_name}
+          </h2>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 7, marginBottom: 16, fontFamily: 'var(--font-label)', fontSize: 13, color: 'var(--muted)' }}>
+            {event.venue      && <span>📍 {event.venue}</span>}
+            {event.date       && <span>📅 {formatDate(event.date)}</span>}
+            {event.time       && <span>🕙 {event.time}</span>}
+            {event.genre      && <span>🎵 {event.genre}</span>}
+            {event.event_type && <span>🏷️ {event.event_type}</span>}
+          </div>
+          {event.description && (
+            <p style={{ fontFamily: 'var(--font-label)', fontSize: 14, color: 'var(--cream)', lineHeight: 1.6, marginBottom: 20 }}>
+              {event.description}
+            </p>
+          )}
+          {event.ticket_link ? (
+            <a href={event.ticket_link} target="_blank" rel="noopener noreferrer" className="btn btn-red w-full" style={{ fontSize: 14, padding: '12px 20px' }}>
+              Get Tickets →
+            </a>
+          ) : (
+            <p style={{ fontFamily: 'var(--font-label)', fontSize: 13, color: 'var(--muted)', textAlign: 'center' }}>
+              No ticket link available for this event
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function EventCard({ event }) {
+  const [modalOpen, setModalOpen] = useState(false)
   const badge = BADGE_COLORS[event.event_type] || BADGE_COLORS.special
 
   // Build carousel: flyer first, venue second, video last
@@ -243,33 +310,40 @@ function EventCard({ event }) {
   const mediaTypes = mediaEntries.map(m => m.type).join('|')
 
   return (
-    <div className="event-card">
-      {mediaEntries.length > 0 ? (
-        <MediaCarousel mediaUrls={mediaUrls} mediaTypes={mediaTypes} />
-      ) : (
-        <div className="event-card__image">
-          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg, #0d0d2b, #1a0a2e)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 48 }}>🎉</div>
-          <div className="event-card__overlay" />
-          <div className="event-card__overlay-text">
-            <div className="event-card__name">{event.event_name}</div>
-            <div className="event-card__meta">{event.venue} · {formatDate(event.date)}{event.time ? ` · ${event.time}` : ''}</div>
+    <>
+      <div className="event-card" onClick={() => setModalOpen(true)} style={{ cursor: 'pointer' }}>
+        {mediaEntries.length > 0 ? (
+          <MediaCarousel mediaUrls={mediaUrls} mediaTypes={mediaTypes} />
+        ) : (
+          <div className="event-card__image">
+            <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg, #0d0d2b, #1a0a2e)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 48 }}>🎉</div>
+            <div className="event-card__overlay" />
+            <div className="event-card__overlay-text">
+              <div className="event-card__name">{event.event_name}</div>
+              <div className="event-card__meta">{event.venue} · {formatDate(event.date)}{event.time ? ` · ${event.time}` : ''}</div>
+            </div>
           </div>
-        </div>
-      )}
-      <div className="event-card__body">
-        <div style={{ fontFamily: 'var(--font-heading)', fontSize: 'clamp(14px, 4vw, 18px)', color: 'var(--cream)', marginBottom: 4 }}>{event.event_name}</div>
-        <div style={{ fontFamily: 'var(--font-label)', fontSize: 13, color: 'var(--muted)', marginBottom: 8 }}>{event.venue} · {formatDate(event.date)}{event.time ? ` · ${event.time}` : ''}</div>
-        <span
-          className="event-card__badge"
-          style={{ background: badge.bg, color: badge.color }}
-        >{badge.label}</span>
-        {event.ticket_link && (
-          <a href={event.ticket_link} target="_blank" rel="noopener noreferrer" className="btn btn-red w-full" style={{ marginTop: 4, fontSize: 13, padding: '10px 16px' }}>
-            Get Tickets →
-          </a>
         )}
+        <div className="event-card__body">
+          <div style={{ fontFamily: 'var(--font-heading)', fontSize: 'clamp(14px, 4vw, 18px)', color: 'var(--cream)', marginBottom: 4 }}>{event.event_name}</div>
+          <div style={{ fontFamily: 'var(--font-label)', fontSize: 13, color: 'var(--muted)', marginBottom: 8 }}>{event.venue} · {formatDate(event.date)}{event.time ? ` · ${event.time}` : ''}</div>
+          <span className="event-card__badge" style={{ background: badge.bg, color: badge.color }}>{badge.label}</span>
+          {event.ticket_link && (
+            <a
+              href={event.ticket_link}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn btn-red w-full"
+              style={{ marginTop: 4, fontSize: 13, padding: '10px 16px' }}
+              onClick={e => e.stopPropagation()}
+            >
+              Get Tickets →
+            </a>
+          )}
+        </div>
       </div>
-    </div>
+      {modalOpen && <EventModal event={event} onClose={() => setModalOpen(false)} />}
+    </>
   )
 }
 
@@ -464,7 +538,6 @@ const NAV_LINKS = [
   { to: '/events',       label: 'Events' },
   { to: '/calendar',     label: 'Calendar' },
   { to: '/friday-night', label: 'Friday Night Latin District' },
-  { to: '/bar-crawl',    label: 'Bar Crawl' },
   { to: '/resources',    label: 'Resources' },
   { to: '/contact',      label: 'Contact' },
 ]
@@ -679,7 +752,7 @@ function HomePage({ data, loading }) {
             </div>
           )}
           <div style={{ textAlign: 'center', marginTop: 32 }}>
-            <Link to="/events" className="btn btn-outline-blue">View All Events →</Link>
+            <Link to="/events" className="btn btn-outline-blue" onClick={() => window.scrollTo({ top: 0, behavior: 'instant' })}>View All Events →</Link>
           </div>
         </div>
       </section>
@@ -703,7 +776,7 @@ function HomePage({ data, loading }) {
                 {[
                   '13 venues across DTLA all participating on Friday nights',
                   'Live DJs spinning Reggaeton, Salsa, Cumbia, Latin House & more',
-                  'One wristband gets you in everywhere on the crawl route',
+                  'A community collective bringing Latin music to Downtown Los Angeles',
                   'Watch Fests: Major soccer & boxing matches on big screens',
                   'No cover at most venues — just show up and enjoy',
                   'Community built, locally owned, culturally authentic',
@@ -842,9 +915,12 @@ const FILTER_OPTIONS = [
   { value: 'all',          label: 'All Events' },
   { value: 'friday_night', label: 'Friday Night' },
   { value: 'watch_fest',   label: 'Watch Fest' },
-  { value: 'crawl',        label: 'Bar Crawl' },
   { value: 'special',      label: 'Special' },
+  { value: 'other',        label: 'Other' },
+  { value: 'calendar',     label: 'Calendar', to: '/calendar' },
 ]
+
+const KNOWN_EVENT_TYPES = new Set(['friday_night', 'watch_fest', 'crawl', 'special'])
 
 function EventsPage({ data, loading }) {
   const [filter, setFilter] = useState('all')
@@ -853,6 +929,7 @@ function EventsPage({ data, loading }) {
     if (e.active === 'no') return false
     if (e.status && e.status.toLowerCase() !== 'approved') return false
     if (filter === 'all') return true
+    if (filter === 'other') return !KNOWN_EVENT_TYPES.has(e.event_type)
     return e.event_type === filter
   })
 
@@ -865,13 +942,17 @@ function EventsPage({ data, loading }) {
           <h1 className="section-heading neon-blue mb-32">EVENTS</h1>
 
           <div className="filter-bar">
-            {FILTER_OPTIONS.map(f => (
-              <button
-                key={f.value}
-                className={`filter-btn${filter === f.value ? ' active' : ''}`}
-                onClick={() => setFilter(f.value)}
-              >{f.label}</button>
-            ))}
+            {FILTER_OPTIONS.map(f =>
+              f.to ? (
+                <Link key={f.value} to={f.to} className="filter-btn">{f.label}</Link>
+              ) : (
+                <button
+                  key={f.value}
+                  className={`filter-btn${filter === f.value ? ' active' : ''}`}
+                  onClick={() => setFilter(f.value)}
+                >{f.label}</button>
+              )
+            )}
           </div>
 
           {loading ? (
@@ -1694,7 +1775,7 @@ function SubmitEventPage() {
           Your event is now in review. Once approved it will appear on the calendar and events pages.
           Our team typically reviews within 48 hours.
         </p>
-        <Link to="/events" className="btn btn-blue">View All Events →</Link>
+        <Link to="/events" className="btn btn-blue" onClick={() => window.scrollTo({ top: 0, behavior: 'instant' })}>View All Events →</Link>
       </div>
     </div>
   )
@@ -1774,8 +1855,8 @@ function SubmitEventPage() {
               {/* Genre + Event Type */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 20px' }}>
                 <div className="form-group">
-                  <label className="form-label">Genre *</label>
-                  <select required className="form-select" value={form.genre} onChange={set('genre')}>
+                  <label className="form-label">Genre <span style={{ color: 'var(--muted)', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(optional)</span></label>
+                  <select className="form-select" value={form.genre} onChange={set('genre')}>
                     <option value="">Select genre…</option>
                     {GENRE_OPTIONS.map(g => <option key={g} value={g}>{g}</option>)}
                   </select>
@@ -2313,13 +2394,23 @@ function CalendarPage({ data, loading }) {
 
 function ScrollToTop() {
   useEffect(() => {
-    window.scrollTo(0, 0)
+    // 'instant' bypasses CSS scroll-behavior:smooth so the page never
+    // briefly shows a scrolled position before animating up.
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
   }, [])
   return null
 }
 
 export default function App() {
   const { data, loading } = useSheets()
+
+  // Disable browser scroll restoration so it doesn't fight ScrollToTop.
+  // We manage scroll position explicitly on every route change.
+  useEffect(() => {
+    if ('scrollRestoration' in window.history) {
+      window.history.scrollRestoration = 'manual'
+    }
+  }, [])
 
   return (
     <BrowserRouter>
