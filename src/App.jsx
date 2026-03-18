@@ -1782,10 +1782,10 @@ function SubmitEventPage() {
       //    All moderation defaults are enforced here and re-enforced server-side.
       //
       //    Moderation review workflow:
-      //      pending  = submitted, not live (default for all new submissions)
-      //      approved = admin-approved, visible on site when active = TRUE
-      //      rejected = hidden
-      //      active   = TRUE required to display (admin sets after approval)
+      //      submitted = written to Events, not live (default for all new submissions)
+      //      approved  = admin-approved, visible on site when active = TRUE
+      //      rejected  = hidden
+      //      active    = TRUE required to display (admin sets after approval)
       //
       //    TODO: add duplicate check (event_name + venue + date) before submitting
       //    TODO: validate venue against approved venue whitelist when available
@@ -1799,11 +1799,11 @@ function SubmitEventPage() {
         event_type:      form.event_type,
         ticket_link:     form.ticket_link.trim(),
         flyer_image_url,
-        // Moderation defaults — never overridable by submitter
+        // Moderation defaults — overwritten server-side, never overridable by submitter
         featured:        'FALSE',
         active:          'FALSE',
         tailgate_time:   '',
-        status:          'pending',
+        status:          'submitted',
         venue_image_url: '',  // Future: add venue image upload (same Cloudinary flow)
         video_url:       '',
         crowd_level:     '',
@@ -2048,19 +2048,32 @@ function SubmitEventPage() {
 
 function ContactPage() {
   const [form, setForm] = useState({ name: '', email: '', company: '', type: '', subject: '', message: '' })
-  const [submitted, setSubmitted] = useState(false)
+  const [submitted,  setSubmitted]  = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [formError,  setFormError]  = useState(null)
 
   const set = (key) => (e) => setForm(prev => ({ ...prev, [key]: e.target.value }))
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    fetch('/', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: encode({ 'form-name': 'contact', ...form }),
-    })
-      .catch(err => console.error('Form error:', err))
-      .finally(() => setSubmitted(true))
+    setFormError(null)
+    setSubmitting(true)
+    try {
+      const res = await fetch('/.netlify/functions/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      })
+      const body = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        throw new Error(body.error || 'Submission failed. Please try again.')
+      }
+      setSubmitted(true)
+    } catch (err) {
+      setFormError(err.message || 'Something went wrong. Please try again.')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   if (submitted) return (
@@ -2161,7 +2174,12 @@ function ContactPage() {
                   <textarea required className="form-textarea" value={form.message} onChange={set('message')} placeholder="Tell us more…" rows={5} />
                 </div>
               </div>
-              <button type="submit" className="btn btn-blue w-full">Send Message →</button>
+              {formError && (
+                <p style={{ fontFamily: 'var(--font-label)', fontSize: 13, color: '#FF1744', marginBottom: 12 }}>{formError}</p>
+              )}
+              <button type="submit" className="btn btn-blue w-full" disabled={submitting}>
+                {submitting ? 'Sending…' : 'Send Message →'}
+              </button>
             </form>
           </div>
         </div>

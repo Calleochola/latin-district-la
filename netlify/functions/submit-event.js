@@ -76,7 +76,7 @@ export const handler = async (event) => {
     featured:        'FALSE',
     active:          'FALSE',
     tailgate_time:   '',
-    status:          'pending',
+    status:          'submitted',
     venue_image_url: '',
     video_url:       '',
     crowd_level:     '',

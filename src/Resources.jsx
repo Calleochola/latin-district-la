@@ -2,11 +2,6 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import ResourceCard from './ResourceCard'
 
-// ── Event Submission Form ────────────────────────────────────────────────────
-// Replace with your actual Google Form URL when ready.
-// While this is still the placeholder string, the CTA button renders as disabled.
-const EVENT_SUBMISSION_FORM_URL = "PASTE_GOOGLE_FORM_LINK_HERE"
-
 // ── Google Form → Sheet Pipeline (schema reference) ─────────────────────────
 //
 // RECOMMENDED GOOGLE FORM FIELDS
@@ -164,8 +159,6 @@ const IMMIGRANT_RESOURCES = [
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function Resources() {
-  const formAvailable = EVENT_SUBMISSION_FORM_URL !== "PASTE_GOOGLE_FORM_LINK_HERE"
-
   return (
     <div className="page-top">
       <section className="section">
@@ -318,18 +311,9 @@ export default function Resources() {
             <p className="resources-cta__sub">
               Submit your event and get in front of the Latin District audience every week.
             </p>
-            {formAvailable ? (
-              <a href={EVENT_SUBMISSION_FORM_URL} target="_blank" rel="noopener noreferrer" className="btn btn-blue">
-                Submit Your Event →
-              </a>
-            ) : (
-              <button className="btn btn-blue" disabled style={{ opacity: 0.45, cursor: 'not-allowed' }}>
-                Coming Soon
-              </button>
-            )}
-            <p style={{ marginTop: 12, fontFamily: 'var(--font-label)', fontSize: 12, color: 'var(--muted)' }}>
-              You can also use the <Link to="/submit-event" style={{ color: 'var(--blue)' }}>Submit Event</Link> form on this site.
-            </p>
+            <Link to="/submit-event" className="btn btn-blue">
+              Submit Your Event →
+            </Link>
           </div>
 
         </div>
