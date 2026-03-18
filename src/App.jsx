@@ -2131,7 +2131,8 @@ function CalendarPage({ data, loading }) {
   const today = new Date()
   const [curYear, setCurYear]   = useState(today.getFullYear())
   const [curMonth, setCurMonth] = useState(today.getMonth())
-  const [selectedDay, setSelectedDay] = useState(null)
+  const [selectedDay, setSelectedDay]   = useState(null)
+  const [calModalEvent, setCalModalEvent] = useState(null)
 
   // Only show approved + active items on the calendar and list
   // Old rows without a status field continue to show for backwards compatibility.
@@ -2278,8 +2279,16 @@ function CalendarPage({ data, loading }) {
                       ? { bg: 'rgba(255,179,0,.18)', color: 'var(--gold)', label: 'Watch Fest' }
                       : (BADGE_COLORS[ev.event_type] || BADGE_COLORS.special)
                     const imgUrl = convertDriveUrl(ev.flyer_image_url)
+                    // Normalise so EventModal always has event_name
+                    const normalised = { ...ev, event_name: name }
                     return (
-                      <div key={i} style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+                      <div
+                        key={i}
+                        onClick={() => setCalModalEvent(normalised)}
+                        style={{ display: 'flex', gap: 14, alignItems: 'flex-start', cursor: 'pointer', borderRadius: 4, padding: '4px 0', transition: 'opacity .15s' }}
+                        onMouseEnter={e => e.currentTarget.style.opacity = '.8'}
+                        onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+                      >
                         <div style={{ width: 52, height: 52, flexShrink: 0, borderRadius: 3, overflow: 'hidden', background: '#0a0a1a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>
                           {imgUrl
                             ? <img src={imgUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" />
@@ -2291,7 +2300,14 @@ function CalendarPage({ data, loading }) {
                           {ev.venue && <div style={{ fontFamily: 'var(--font-label)', fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>📍 {ev.venue}{ev.time ? ` · ${ev.time}` : ''}</div>}
                         </div>
                         {ev.ticket_link && (
-                          <a href={ev.ticket_link} target="_blank" rel="noopener noreferrer" className="btn btn-red" style={{ fontSize: 12, padding: '8px 12px', minHeight: 34, flexShrink: 0, alignSelf: 'center' }}>Tickets →</a>
+                          <a
+                            href={ev.ticket_link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="btn btn-red"
+                            style={{ fontSize: 12, padding: '8px 12px', minHeight: 34, flexShrink: 0, alignSelf: 'center' }}
+                            onClick={e => e.stopPropagation()}
+                          >Tickets →</a>
                         )}
                       </div>
                     )
@@ -2393,11 +2409,15 @@ function CalendarPage({ data, loading }) {
         </div>
       </section>
 
+      {calModalEvent && createPortal(
+        <EventModal event={calModalEvent} onClose={() => setCalModalEvent(null)} />,
+        document.body
+      )}
     </div>
   )
 }
 
-// ── App Root ────────────────────────────────────────────────────────────────
+// ── App Root ─────────────────────────────────────────────────────────────────
 
 function ScrollToTop() {
   useEffect(() => {
