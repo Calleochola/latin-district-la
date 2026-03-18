@@ -244,6 +244,7 @@ function EventModal({ event, onClose }) {
   const imgUrl  = convertDriveUrl(event.flyer_image_url)
 
   useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'instant' })
     const handleKey = (e) => { if (e.key === 'Escape') onClose() }
     document.addEventListener('keydown', handleKey)
     document.body.style.overflow = 'hidden'
