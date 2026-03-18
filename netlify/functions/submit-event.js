@@ -84,7 +84,8 @@ export const handler = async (event) => {
   }
 
   // ── Required field guard ──────────────────────────────────────────────────
-  const required = ['event_name', 'venue', 'date', 'time', 'genre', 'event_type', 'flyer_image_url', 'description']
+  // genre and ticket_link are optional — excluded from this check (matches Apps Script)
+  const required = ['event_name', 'venue', 'date', 'time', 'event_type', 'flyer_image_url', 'description']
   const missing = required.filter(k => !safePayload[k])
   if (missing.length) {
     console.error('[submit-event] Missing required fields:', missing)

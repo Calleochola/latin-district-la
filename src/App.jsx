@@ -1817,15 +1817,10 @@ function SubmitEventPage() {
         body: JSON.stringify(payload),
       })
       const resBody = await res.json().catch(() => ({}))
-      // Only surface definitive failures — not Apps Script response quirks.
-      // A 5xx can occur after the row is already written (Apps Script returns
-      // HTML or non-standard JSON); that is not a user-facing failure.
-      // Show an error only for 4xx client errors or an explicit result:'error'.
-      if (res.status >= 400 && res.status < 500) {
+      // Catch all non-2xx — includes 500 from missing APPS_SCRIPT_URL env var,
+      // which previously fell through and showed a false success screen.
+      if (!res.ok) {
         throw new Error(resBody.error || 'Submission failed. Please try again.')
-      }
-      if (resBody.result === 'error') {
-        throw new Error(resBody.error || resBody.message || 'Submission failed. Please try again.')
       }
 
       setSubmitted(true)
@@ -1911,7 +1906,7 @@ function SubmitEventPage() {
               </div>
 
               {/* Date + Time */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 20px' }}>
+              <div className="form-grid-2col">
                 <div className="form-group">
                   <label className="form-label">Event Date *</label>
                   <input required type="date" className="form-input" value={form.date} onChange={set('date')} />
