@@ -3,8 +3,9 @@
 // Contact Form Apps Script Web App, which sends an email notification.
 // Nothing is written to any Google Sheet.
 //
-// Required Netlify env var (Netlify dashboard → Site settings → Environment variables):
-//   CONTACT_SCRIPT_URL — the deployed contact.gs /exec URL
+// Required Netlify env vars (Netlify dashboard → Site settings → Environment variables):
+//   CONTACT_SCRIPT_URL    — the deployed contact.gs /exec URL
+//   TURNSTILE_SECRET_KEY  — Cloudflare Turnstile secret key (optional; skipped if unset)
 //
 // Uses the same redirect-safe POST pattern as submit-event.js:
 // Apps Script /exec responds with a 302 before executing. Re-POSTing to the
@@ -40,7 +41,39 @@ export const handler = async (event) => {
     }
   }
 
-  // Only pass known fields — never forward arbitrary data
+  // ── Turnstile verification (skipped when secret key is not configured) ────
+  const turnstileSecret = process.env.TURNSTILE_SECRET_KEY
+  const cfToken = String(payload.cf_token || '').trim()
+  if (turnstileSecret) {
+    if (!cfToken) {
+      return {
+        statusCode: 400,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ error: 'Captcha token missing.' }),
+      }
+    }
+    try {
+      const verifyRes = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ secret: turnstileSecret, response: cfToken }),
+      })
+      const verifyData = await verifyRes.json()
+      if (!verifyData.success) {
+        console.error('[contact] Turnstile failed:', verifyData['error-codes'])
+        return {
+          statusCode: 400,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ error: 'Captcha verification failed. Please try again.' }),
+        }
+      }
+    } catch (err) {
+      console.error('[contact] Turnstile verification error:', err.message)
+      // Non-fatal — proceed if Cloudflare is unreachable
+    }
+  }
+
+  // Only pass known fields — never forward arbitrary data (cf_token excluded)
   const safePayload = {
     name:    String(payload.name    || '').trim(),
     email:   String(payload.email   || '').trim(),

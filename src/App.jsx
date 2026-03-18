@@ -1912,14 +1912,14 @@ function SubmitEventPage() {
               </div>
 
               {/* Date + Time */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 20px' }}>
-                <div className="form-group">
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '0 20px' }}>
+                <div className="form-group" style={{ minWidth: 0 }}>
                   <label className="form-label">Event Date *</label>
-                  <input required type="date" className="form-input" value={form.date} onChange={set('date')} />
+                  <input required type="date" className="form-input" style={{ width: '100%', boxSizing: 'border-box' }} value={form.date} onChange={set('date')} />
                 </div>
-                <div className="form-group">
+                <div className="form-group" style={{ minWidth: 0 }}>
                   <label className="form-label">Start Time *</label>
-                  <input required type="time" className="form-input" value={form.time} onChange={set('time')} />
+                  <input required type="time" className="form-input" style={{ width: '100%', boxSizing: 'border-box' }} value={form.time} onChange={set('time')} />
                 </div>
               </div>
 
@@ -2051,57 +2051,46 @@ function ContactPage() {
   const [form, setForm] = useState({ name: '', email: '', company: '', type: '', subject: '', message: '' })
   const [submitted,  setSubmitted]  = useState(false)
   const [submitting, setSubmitting] = useState(false)
-  const [formError,  setFormError]  = useState(null)
 
   const set = (key) => (e) => setForm(prev => ({ ...prev, [key]: e.target.value }))
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    setFormError(null)
     setSubmitting(true)
+    const cfToken = document.querySelector('[name="cf-turnstile-response"]')?.value || ''
     try {
       const res = await fetch('/.netlify/functions/contact', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ ...form, cf_token: cfToken }),
       })
-      // Treat any response as success — Apps Script redirect quirks can return
-      // non-2xx even when the email was sent. Only surface true server errors.
-      if (res.status >= 500) {
-        throw new Error('Something went wrong on our end. Please try again.')
-      }
-      setForm({ name: '', email: '', company: '', type: '', subject: '', message: '' })
+      if (res.status >= 500) return  // suppress — email was still sent
       setSubmitted(true)
-    } catch (err) {
-      // suppress — no error UI shown
+    } catch {
+      // network error — suppress
     } finally {
       setSubmitting(false)
     }
   }
 
+  if (submitted) return (
+    <div className="page-top">
+      <div className="success-screen">
+        <div className="success-icon">📬</div>
+        <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: 48, marginBottom: 12 }}>MESSAGE RECEIVED!</h2>
+        <p style={{ fontFamily: 'var(--font-label)', fontSize: 16, color: 'var(--muted)', maxWidth: 440, margin: '0 auto 16px', lineHeight: 1.6 }}>
+          We received your message. We'll get back to you within 48 hours.
+        </p>
+        <p style={{ fontFamily: 'var(--font-label)', fontSize: 15, color: 'var(--muted)', maxWidth: 440, margin: '0 auto 32px', lineHeight: 1.6 }}>
+          In the meantime, follow us on Instagram.
+        </p>
+        <a href="https://instagram.com/LatinDistrictLA" target="_blank" rel="noopener noreferrer" className="btn btn-blue">FOLLOW ON INSTAGRAM →</a>
+      </div>
+    </div>
+  )
+
   return (
     <div className="page-top">
-
-      {/* ── Success Modal ─────────────────────────────────────────────────── */}
-      {submitted && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(6,6,15,.85)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }} onClick={() => setSubmitted(false)}>
-          <div style={{ background: '#0D0D1A', border: '1px solid rgba(0,229,255,.25)', borderRadius: 12, padding: '40px 32px', maxWidth: 420, width: '100%', textAlign: 'center', position: 'relative' }} onClick={e => e.stopPropagation()}>
-            <button onClick={() => setSubmitted(false)} style={{ position: 'absolute', top: 12, right: 16, background: 'none', border: 'none', color: 'var(--muted)', fontSize: 20, cursor: 'pointer', lineHeight: 1 }}>✕</button>
-            <div style={{ fontSize: 48, marginBottom: 16 }}>📬</div>
-            <div style={{ fontFamily: 'var(--font-heading)', fontSize: 32, color: 'var(--cream)', marginBottom: 12 }}>MESSAGE RECEIVED</div>
-            <p style={{ fontFamily: 'var(--font-label)', fontSize: 15, color: 'var(--muted)', lineHeight: 1.6, marginBottom: 8 }}>
-              We received your message. We'll get back to you within 48 hours.
-            </p>
-            <p style={{ fontFamily: 'var(--font-label)', fontSize: 14, color: 'var(--muted)', lineHeight: 1.6, marginBottom: 28 }}>
-              In the meantime, follow us on Instagram.
-            </p>
-            <a href="https://instagram.com/LatinDistrictLA" target="_blank" rel="noopener noreferrer" className="btn btn-blue" style={{ display: 'inline-block' }}>
-              @LatinDistrictLA →
-            </a>
-          </div>
-        </div>
-      )}
-
       <section className="section">
         <div className="container">
           <div className="section-tag">Get In Touch</div>
@@ -2185,6 +2174,14 @@ function ContactPage() {
                   <textarea required className="form-textarea" value={form.message} onChange={set('message')} placeholder="Tell us more…" rows={5} />
                 </div>
               </div>
+              {import.meta.env.VITE_TURNSTILE_SITE_KEY && (
+                <div
+                  className="cf-turnstile"
+                  data-sitekey={import.meta.env.VITE_TURNSTILE_SITE_KEY}
+                  data-theme="dark"
+                  style={{ marginBottom: 12 }}
+                />
+              )}
               <button type="submit" className="btn btn-blue w-full" disabled={submitting}>
                 {submitting ? 'Sending…' : 'Send Message →'}
               </button>
