@@ -984,24 +984,67 @@ function HomePage({ data, loading }) {
 
 const FILTER_OPTIONS = [
   { value: 'all',          label: 'All Events' },
-  { value: 'friday_night', label: 'Friday Night' },
-  { value: 'watch_fest',   label: 'Watch Fest' },
-  { value: 'special',      label: 'Special' },
-  { value: 'other',        label: 'Other' },
+  { value: 'Friday Night', label: 'Friday Night' },
+  { value: 'Watch Fest',   label: 'Watch Fest' },
+  { value: 'Special',      label: 'Special' },
+  { value: 'Other',        label: 'Other' },
   { value: 'calendar',     label: 'Calendar', to: '/calendar' },
 ]
 
-const KNOWN_EVENT_TYPES = new Set(['friday_night', 'watch_fest', 'crawl', 'special'])
+// Returns the canonical site_tab for an event row.
+// Primary source: the sheet's `site_tab` column.
+// Fallback (when blank): content-based heuristics.
+function getSiteTab(e) {
+  const raw = (e.site_tab || '').trim()
+  if (raw) return raw  // sheet value wins — no guessing
+
+  // ── Fallback heuristics when site_tab is blank ──────────────────────────
+  const type     = (e.event_type || '').toLowerCase().trim()
+  const category = (e.category   || '').toLowerCase().trim()
+  const date     = parseEventDate(e.date)
+  const isFriday = date !== null && date.getDay() === 5
+
+  // Watch Fest: any watch party, tailgate, or sports-category event
+  if (
+    type.includes('watch')      ||
+    type.includes('tailgate')   ||
+    category.includes('sport')  ||
+    category.includes('soccer') ||
+    category.includes('football') ||
+    category.includes('dodger') ||
+    category.includes('worldcup') ||
+    category.includes('world cup')
+  ) return 'Watch Fest'
+
+  // Special
+  if (type.includes('special')) return 'Special'
+
+  // Friday Night: on a Friday with a club/party/friday_night type
+  if (isFriday && (
+    type === 'friday_night' ||
+    type.includes('club')   ||
+    type.includes('party')
+  )) return 'Friday Night'
+
+  return 'Other'
+}
 
 function EventsPage({ data, loading }) {
   const [filter, setFilter] = useState('all')
 
   const events = data.events.filter(e => {
-    if (e.active === 'no') return false
-    if (e.status && e.status.toLowerCase() !== 'approved') return false
+    // Tolerant active check — accepts yes/Yes/YES/true/True/TRUE
+    const active = (e.active || '').toLowerCase().trim()
+    if (active !== 'yes' && active !== 'true') return false
+
+    // Tolerant status check — blank passes (legacy rows); otherwise must be approved
+    const status = (e.status || '').toLowerCase().trim()
+    if (status && status !== 'approved') return false
+
     if (filter === 'all') return true
-    if (filter === 'other') return !KNOWN_EVENT_TYPES.has(e.event_type)
-    return e.event_type === filter
+
+    // site_tab-based tab matching
+    return getSiteTab(e) === filter
   })
 
   return (
