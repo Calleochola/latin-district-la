@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { createPortal } from 'react-dom'
-import { BrowserRouter, Routes, Route, Link, NavLink, useNavigate, useLocation } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Link, NavLink, useNavigate, useLocation, useSearchParams } from 'react-router-dom'
 import MediaCarousel from './MediaCarousel'
 import Resources from './Resources'
 
@@ -656,6 +656,17 @@ function Footer() {
 
 function HomePage({ data, loading }) {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const successType = searchParams.get('success')  // 'event' | 'contact' | null
+  const [showBanner, setShowBanner] = useState(() => !!searchParams.get('success'))
+
+  // Clear the ?success param from the URL immediately so refresh doesn't re-show
+  useEffect(() => {
+    if (successType) {
+      navigate('/', { replace: true })
+    }
+  }, [])
+
   const featured = data.events.filter(e => e.featured === 'yes' && e.active !== 'no')
   const flagshipEvent = data.events.find(e => e.active !== 'no' && isFlagshipItem(e))
   const flagshipWatchFest = (data.watchfest || []).find(e => e.active !== 'no' && isFlagshipItem(e))
@@ -663,8 +674,24 @@ function HomePage({ data, loading }) {
     .filter(v => v.active !== 'no')
     .slice(0, 8)
 
+  const bannerMsg = successType === 'event'
+    ? 'Event submitted! We received your event and will review it within 48 hours.'
+    : 'Message received! We\'ll get back to you within 48 hours.'
+
   return (
     <div className="page-top">
+
+      {/* ── Success Banner ── */}
+      {showBanner && (
+        <div style={{ position: 'fixed', top: 60, left: 0, right: 0, zIndex: 900, display: 'flex', justifyContent: 'center', padding: '0 16px', pointerEvents: 'none' }}>
+          <div style={{ background: '#0D2B1A', border: '1px solid #00C853', borderRadius: 8, padding: '14px 20px', maxWidth: 520, width: '100%', display: 'flex', alignItems: 'flex-start', gap: 12, pointerEvents: 'auto', boxShadow: '0 4px 24px rgba(0,200,83,.2)' }}>
+            <span style={{ fontSize: 22, lineHeight: 1, flexShrink: 0 }}>✅</span>
+            <p style={{ fontFamily: 'var(--font-label)', fontSize: 14, color: '#B9F6CA', lineHeight: 1.5, margin: 0, flex: 1 }}>{bannerMsg}</p>
+            <button onClick={() => setShowBanner(false)} style={{ background: 'none', border: 'none', color: '#B9F6CA', fontSize: 18, cursor: 'pointer', lineHeight: 1, flexShrink: 0, padding: 0 }}>✕</button>
+          </div>
+        </div>
+      )}
+
       {/* ── Hero ── */}
       <section className="hero scanlines">
         <div className="hero__bg" />
@@ -1725,6 +1752,7 @@ async function uploadToCloudinary(file) {
 }
 
 function SubmitEventPage() {
+  const navigate = useNavigate()
   const [form, setForm] = useState({
     event_name:  '',
     venue:       '',
@@ -1740,7 +1768,6 @@ function SubmitEventPage() {
   const [submitting,   setSubmitting]   = useState(false)
   const [uploadError,  setUploadError]  = useState(null)
   const [formError,    setFormError]    = useState(null)
-  const [submitted,    setSubmitted]    = useState(false)
 
   const set = (key) => (e) => setForm(prev => ({ ...prev, [key]: e.target.value }))
 
@@ -1829,27 +1856,13 @@ function SubmitEventPage() {
         throw new Error(resBody.error || resBody.message || 'Submission failed. Please try again.')
       }
 
-      setSubmitted(true)
+      navigate('/?success=event', { replace: true })
     } catch (err) {
       setFormError(err.message || 'Submission failed. Please try again.')
     } finally {
       setSubmitting(false)
     }
   }
-
-  if (submitted) return (
-    <div className="page-top">
-      <div className="success-screen">
-        <div className="success-icon">✅</div>
-        <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: 48, marginBottom: 12 }}>EVENT SUBMITTED!</h2>
-        <p style={{ fontFamily: 'var(--font-label)', fontSize: 16, color: 'var(--muted)', maxWidth: 440, margin: '0 auto 32px', lineHeight: 1.6 }}>
-          Your event is now in review. Once approved it will appear on the calendar and events pages.
-          Our team typically reviews within 48 hours.
-        </p>
-        <Link to="/events" className="btn btn-blue" onClick={() => window.scrollTo({ top: 0, behavior: 'instant' })}>View All Events →</Link>
-      </div>
-    </div>
-  )
 
   return (
     <div className="page-top">
@@ -1912,14 +1925,14 @@ function SubmitEventPage() {
               </div>
 
               {/* Date + Time */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '0 20px' }}>
-                <div className="form-group" style={{ minWidth: 0 }}>
+              <div className="form-grid-2col">
+                <div className="form-group">
                   <label className="form-label">Event Date *</label>
-                  <input required type="date" className="form-input" style={{ width: '100%', boxSizing: 'border-box' }} value={form.date} onChange={set('date')} />
+                  <input required type="date" className="form-input" value={form.date} onChange={set('date')} />
                 </div>
-                <div className="form-group" style={{ minWidth: 0 }}>
+                <div className="form-group">
                   <label className="form-label">Start Time *</label>
-                  <input required type="time" className="form-input" style={{ width: '100%', boxSizing: 'border-box' }} value={form.time} onChange={set('time')} />
+                  <input required type="time" className="form-input" value={form.time} onChange={set('time')} />
                 </div>
               </div>
 
@@ -2048,8 +2061,8 @@ function SubmitEventPage() {
 // ── CONTACT PAGE ────────────────────────────────────────────────────────────
 
 function ContactPage() {
+  const navigate = useNavigate()
   const [form, setForm] = useState({ name: '', email: '', company: '', type: '', subject: '', message: '' })
-  const [submitted,  setSubmitted]  = useState(false)
   const [submitting, setSubmitting] = useState(false)
 
   const set = (key) => (e) => setForm(prev => ({ ...prev, [key]: e.target.value }))
@@ -2065,29 +2078,13 @@ function ContactPage() {
         body: JSON.stringify({ ...form, cf_token: cfToken }),
       })
       if (res.status >= 500) return  // suppress — email was still sent
-      setSubmitted(true)
+      navigate('/?success=contact', { replace: true })
     } catch {
       // network error — suppress
     } finally {
       setSubmitting(false)
     }
   }
-
-  if (submitted) return (
-    <div className="page-top">
-      <div className="success-screen">
-        <div className="success-icon">📬</div>
-        <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: 48, marginBottom: 12 }}>MESSAGE RECEIVED!</h2>
-        <p style={{ fontFamily: 'var(--font-label)', fontSize: 16, color: 'var(--muted)', maxWidth: 440, margin: '0 auto 16px', lineHeight: 1.6 }}>
-          We received your message. We'll get back to you within 48 hours.
-        </p>
-        <p style={{ fontFamily: 'var(--font-label)', fontSize: 15, color: 'var(--muted)', maxWidth: 440, margin: '0 auto 32px', lineHeight: 1.6 }}>
-          In the meantime, follow us on Instagram.
-        </p>
-        <a href="https://instagram.com/LatinDistrictLA" target="_blank" rel="noopener noreferrer" className="btn btn-blue">FOLLOW ON INSTAGRAM →</a>
-      </div>
-    </div>
-  )
 
   return (
     <div className="page-top">
