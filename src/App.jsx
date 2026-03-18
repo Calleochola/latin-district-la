@@ -2175,9 +2175,6 @@ function ContactPage() {
                   <textarea required className="form-textarea" value={form.message} onChange={set('message')} placeholder="Tell us more…" rows={5} />
                 </div>
               </div>
-              {formError && (
-                <p style={{ fontFamily: 'var(--font-label)', fontSize: 13, color: '#FF1744', marginBottom: 12 }}>{formError}</p>
-              )}
               <button type="submit" className="btn btn-blue w-full" disabled={submitting}>
                 {submitting ? 'Sending…' : 'Send Message →'}
               </button>
