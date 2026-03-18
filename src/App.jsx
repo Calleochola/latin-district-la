@@ -245,13 +245,27 @@ function EventModal({ event, onClose }) {
   const imgUrl = convertDriveUrl(event.flyer_image_url)
 
   useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'instant' })
+    const scrollY = window.scrollY
+    const body = document.body
+    body.style.position   = 'fixed'
+    body.style.top        = `-${scrollY}px`
+    body.style.left       = '0'
+    body.style.right      = '0'
+    body.style.width      = '100%'
+    body.style.overflowY  = 'hidden'
+
     const handleKey = (e) => { if (e.key === 'Escape') onClose() }
     document.addEventListener('keydown', handleKey)
-    document.body.style.overflow = 'hidden'
+
     return () => {
       document.removeEventListener('keydown', handleKey)
-      document.body.style.overflow = ''
+      body.style.position  = ''
+      body.style.top       = ''
+      body.style.left      = ''
+      body.style.right     = ''
+      body.style.width     = ''
+      body.style.overflowY = ''
+      window.scrollTo(0, scrollY)
     }
   }, [onClose])
 
