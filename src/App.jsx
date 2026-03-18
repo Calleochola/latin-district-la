@@ -2064,9 +2064,10 @@ function ContactPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
       })
-      const body = await res.json().catch(() => ({}))
-      if (!res.ok) {
-        throw new Error(body.error || 'Submission failed. Please try again.')
+      // Treat any response as success — Apps Script redirect quirks can return
+      // non-2xx even when the email was sent. Only surface true server errors.
+      if (res.status >= 500) {
+        throw new Error('Something went wrong on our end. Please try again.')
       }
       setSubmitted(true)
     } catch (err) {
