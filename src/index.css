@@ -1232,6 +1232,10 @@ ul { list-style: none; }
   border-color: var(--blue) !important;
   box-shadow: 0 0 0 1px var(--blue);
 }
+.cal-cell--selected {
+  border-color: rgba(0,229,255,.6) !important;
+  background: rgba(0,229,255,.08);
+}
 .cal-cell__num {
   font-family: var(--font-heading);
   font-size: 18px;
@@ -1265,55 +1269,6 @@ ul { list-style: none; }
 }
 
 /* Calendar modal */
-.cal-modal-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 300;
-  background: rgba(6,6,15,.85);
-  backdrop-filter: blur(6px);
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  padding: 0;
-}
-@media (min-width: 600px) {
-  .cal-modal-overlay {
-    align-items: center;
-    padding: 24px;
-  }
-}
-.cal-modal {
-  background: #0D0D1F;
-  border: 1px solid rgba(0,229,255,.2);
-  border-radius: 8px 8px 0 0;
-  width: 100%;
-  max-width: 520px;
-  max-height: 85vh;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-}
-@media (min-width: 600px) {
-  .cal-modal {
-    border-radius: 8px;
-  }
-}
-.cal-modal__header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 20px 24px 16px;
-  border-bottom: 1px solid rgba(255,255,255,.08);
-  position: sticky;
-  top: 0;
-  background: #0D0D1F;
-  z-index: 1;
-}
-.cal-modal__body {
-  padding: 20px 24px 28px;
-}
-.cal-modal__event {
-  padding-bottom: 4px;
-}
 
 /* Mobile — hide day labels on very small screens, show initial only */
 @media (max-width: 380px) {

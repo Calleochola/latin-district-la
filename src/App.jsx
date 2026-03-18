@@ -2131,7 +2131,7 @@ function CalendarPage({ data, loading }) {
   const today = new Date()
   const [curYear, setCurYear]   = useState(today.getFullYear())
   const [curMonth, setCurMonth] = useState(today.getMonth())
-  const [modal, setModal]       = useState(null)
+  const [selectedDay, setSelectedDay] = useState(null)
 
   // Only show approved + active items on the calendar and list
   // Old rows without a status field continue to show for backwards compatibility.
@@ -2185,10 +2185,12 @@ function CalendarPage({ data, loading }) {
   while (cells.length % 7 !== 0) cells.push(null)
 
   const goToPrev = () => {
+    setSelectedDay(null)
     if (curMonth === 0) { setCurYear(y => y - 1); setCurMonth(11) }
     else setCurMonth(m => m - 1)
   }
   const goToNext = () => {
+    setSelectedDay(null)
     if (curMonth === 11) { setCurYear(y => y + 1); setCurMonth(0) }
     else setCurMonth(m => m + 1)
   }
@@ -2230,11 +2232,11 @@ function CalendarPage({ data, loading }) {
                   return (
                     <div
                       key={i}
-                      className={`cal-cell${dayEvents.length ? ' cal-cell--has-events' : ''}${isToday(day) ? ' cal-cell--today' : ''}`}
-                      onClick={() => dayEvents.length && setModal({ day, month: curMonth, year: curYear, events: dayEvents })}
+                      className={`cal-cell${dayEvents.length ? ' cal-cell--has-events' : ''}${isToday(day) ? ' cal-cell--today' : ''}${selectedDay === day ? ' cal-cell--selected' : ''}`}
+                      onClick={() => dayEvents.length && setSelectedDay(d => d === day ? null : day)}
                       role={dayEvents.length ? 'button' : undefined}
                       tabIndex={dayEvents.length ? 0 : undefined}
-                      onKeyDown={dayEvents.length ? (e) => e.key === 'Enter' && setModal({ day, month: curMonth, year: curYear, events: dayEvents }) : undefined}
+                      onKeyDown={dayEvents.length ? (e) => e.key === 'Enter' && setSelectedDay(d => d === day ? null : day) : undefined}
                     >
                       <div className="cal-cell__num">{day}</div>
                       {dayEvents.slice(0, 2).map((ev, j) => {
@@ -2255,6 +2257,49 @@ function CalendarPage({ data, loading }) {
                 })
             }
           </div>
+
+          {/* Selected day events — inline, no popup */}
+          {selectedDay !== null && (() => {
+            const dayEvts = getDayEvents(selectedDay)
+            if (!dayEvts.length) return null
+            return (
+              <div style={{ marginTop: 20, padding: '16px 20px', background: 'rgba(0,229,255,.05)', border: '1px solid rgba(0,229,255,.2)', borderRadius: 6 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                  <span style={{ fontFamily: 'var(--font-heading)', fontSize: 20, color: 'var(--cream)' }}>
+                    {MONTH_NAMES[curMonth]} {selectedDay}
+                  </span>
+                  <button onClick={() => setSelectedDay(null)} aria-label="Clear selection" style={{ fontSize: 18, color: 'var(--muted)', padding: 6, minHeight: 36, minWidth: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%' }}>✕</button>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {dayEvts.map((ev, i) => {
+                    const isWf  = ev._type === 'watchfest'
+                    const name  = ev.match_name || ev.event_name || 'Event'
+                    const badge = isWf
+                      ? { bg: 'rgba(255,179,0,.18)', color: 'var(--gold)', label: 'Watch Fest' }
+                      : (BADGE_COLORS[ev.event_type] || BADGE_COLORS.special)
+                    const imgUrl = convertDriveUrl(ev.flyer_image_url)
+                    return (
+                      <div key={i} style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+                        <div style={{ width: 52, height: 52, flexShrink: 0, borderRadius: 3, overflow: 'hidden', background: '#0a0a1a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>
+                          {imgUrl
+                            ? <img src={imgUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" />
+                            : (isWf ? '⚽' : '🎉')}
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <span className="event-card__badge" style={{ background: badge.bg, color: badge.color, marginBottom: 4, display: 'inline-block' }}>{badge.label}</span>
+                          <div style={{ fontFamily: 'var(--font-heading)', fontSize: 17, color: 'var(--cream)', lineHeight: 1.2 }}>{name}</div>
+                          {ev.venue && <div style={{ fontFamily: 'var(--font-label)', fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>📍 {ev.venue}{ev.time ? ` · ${ev.time}` : ''}</div>}
+                        </div>
+                        {ev.ticket_link && (
+                          <a href={ev.ticket_link} target="_blank" rel="noopener noreferrer" className="btn btn-red" style={{ fontSize: 12, padding: '8px 12px', minHeight: 34, flexShrink: 0, alignSelf: 'center' }}>Tickets →</a>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )
+          })()}
 
           {/* Legend */}
           <div style={{ display: 'flex', gap: 20, marginTop: 16, flexWrap: 'wrap', fontFamily: 'var(--font-label)', fontSize: 12, color: 'var(--muted)' }}>
@@ -2348,63 +2393,6 @@ function CalendarPage({ data, loading }) {
         </div>
       </section>
 
-      {/* Event detail modal */}
-      {modal && (
-        <div
-          className="cal-modal-overlay"
-          onClick={() => setModal(null)}
-          role="dialog"
-          aria-modal="true"
-          aria-label="Event details"
-        >
-          <div className="cal-modal" onClick={e => e.stopPropagation()}>
-            <div className="cal-modal__header">
-              <h3 style={{ fontFamily: 'var(--font-heading)', fontSize: 26, color: 'var(--cream)' }}>
-                {MONTH_NAMES[modal.month]} {modal.day}, {modal.year}
-              </h3>
-              <button
-                onClick={() => setModal(null)}
-                aria-label="Close"
-                style={{ fontSize: 22, color: 'var(--muted)', padding: 8, minHeight: 44, minWidth: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-              >✕</button>
-            </div>
-            <div className="cal-modal__body">
-              {modal.events.map((ev, i) => {
-                const isWf  = ev._type === 'watchfest'
-                const name  = ev.match_name || ev.event_name || 'Event'
-                const imgUrl = convertDriveUrl(ev.flyer_image_url)
-                const badge = isWf
-                  ? { bg: 'rgba(255,179,0,.2)', color: 'var(--gold)', label: 'Watch Fest' }
-                  : (BADGE_COLORS[ev.event_type] || BADGE_COLORS.special)
-                return (
-                  <div key={i} className="cal-modal__event">
-                    {imgUrl && (
-                      <div style={{ width: '100%', paddingTop: '50%', position: 'relative', borderRadius: 3, overflow: 'hidden', marginBottom: 12, background: '#0a0a1a' }}>
-                        <img src={imgUrl} alt={name} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" />
-                      </div>
-                    )}
-                    <span className="event-card__badge" style={{ background: badge.bg, color: badge.color, marginBottom: 8, display: 'inline-block' }}>{badge.label}</span>
-                    <div style={{ fontFamily: 'var(--font-heading)', fontSize: 24, color: 'var(--cream)', marginBottom: 8 }}>{name}</div>
-                    <div style={{ fontFamily: 'var(--font-label)', fontSize: 13, color: 'var(--muted)', display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 16 }}>
-                      {ev.venue && <span>📍 {ev.venue}</span>}
-                      {ev.time  && <span>🕙 {ev.time}</span>}
-                      {ev.description && <span style={{ color: 'var(--cream)', marginTop: 4, lineHeight: 1.5 }}>{ev.description}</span>}
-                    </div>
-                    {ev.ticket_link ? (
-                      <a href={ev.ticket_link} target="_blank" rel="noopener noreferrer" className="btn btn-red w-full" style={{ fontSize: 13, padding: '10px 16px' }}>
-                        Get Tickets →
-                      </a>
-                    ) : null}
-                    {i < modal.events.length - 1 && (
-                      <hr style={{ margin: '20px 0', borderColor: 'rgba(255,255,255,.08)', borderStyle: 'solid' }} />
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
