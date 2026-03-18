@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { createPortal } from 'react-dom'
-import { BrowserRouter, Routes, Route, Link, NavLink, useNavigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Link, NavLink, useNavigate, useLocation } from 'react-router-dom'
 import MediaCarousel from './MediaCarousel'
 import Resources from './Resources'
 
@@ -306,6 +306,14 @@ function EventModal({ event, onClose }) {
               No ticket link available
             </p>
           )}
+          <button
+            onClick={onClose}
+            style={{ marginTop: 12, width: '100%', padding: '11px 16px', fontFamily: 'var(--font-label)', fontSize: 13, color: 'var(--muted)', background: 'transparent', border: '1px solid rgba(255,255,255,.12)', borderRadius: 4, cursor: 'pointer', transition: 'border-color .15s, color .15s' }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,.3)'; e.currentTarget.style.color = 'var(--cream)' }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,.12)'; e.currentTarget.style.color = 'var(--muted)' }}
+          >
+            Return to Events
+          </button>
         </div>
       </div>
     </div>
@@ -2420,39 +2428,32 @@ function CalendarPage({ data, loading }) {
 // ── App Root ─────────────────────────────────────────────────────────────────
 
 function ScrollToTop() {
+  const { pathname } = useLocation()
   useEffect(() => {
-    // 'instant' bypasses CSS scroll-behavior:smooth so the page never
-    // briefly shows a scrolled position before animating up.
+    window.history.scrollRestoration = 'manual'
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
-  }, [])
+  }, [pathname])
   return null
 }
 
 export default function App() {
   const { data, loading } = useSheets()
 
-  // Disable browser scroll restoration so it doesn't fight ScrollToTop.
-  // We manage scroll position explicitly on every route change.
-  useEffect(() => {
-    if ('scrollRestoration' in window.history) {
-      window.history.scrollRestoration = 'manual'
-    }
-  }, [])
-
   return (
     <BrowserRouter>
+      <ScrollToTop />
       <Nav />
       <Routes>
-        <Route path="/" element={<><ScrollToTop /><HomePage data={data} loading={loading} /></>} />
-        <Route path="/events" element={<><ScrollToTop /><EventsPage data={data} loading={loading} /></>} />
-        <Route path="/calendar" element={<><ScrollToTop /><CalendarPage data={data} loading={loading} /></>} />
-        <Route path="/venues" element={<><ScrollToTop /><VenuesPage data={data} loading={loading} /></>} />
-        <Route path="/friday-night" element={<><ScrollToTop /><FridayNightPage data={data} loading={loading} /></>} />
-        <Route path="/watchfest" element={<><ScrollToTop /><WatchFestPage data={data} loading={loading} /></>} />
-        <Route path="/bar-crawl" element={<><ScrollToTop /><BarCrawlPage data={data} loading={loading} /></>} />
-        <Route path="/submit-event" element={<><ScrollToTop /><SubmitEventPage /></>} />
-        <Route path="/resources" element={<><ScrollToTop /><Resources /></>} />
-        <Route path="/contact" element={<><ScrollToTop /><ContactPage /></>} />
+        <Route path="/" element={<HomePage data={data} loading={loading} />} />
+        <Route path="/events" element={<EventsPage data={data} loading={loading} />} />
+        <Route path="/calendar" element={<CalendarPage data={data} loading={loading} />} />
+        <Route path="/venues" element={<VenuesPage data={data} loading={loading} />} />
+        <Route path="/friday-night" element={<FridayNightPage data={data} loading={loading} />} />
+        <Route path="/watchfest" element={<WatchFestPage data={data} loading={loading} />} />
+        <Route path="/bar-crawl" element={<BarCrawlPage data={data} loading={loading} />} />
+        <Route path="/submit-event" element={<SubmitEventPage />} />
+        <Route path="/resources" element={<Resources />} />
+        <Route path="/contact" element={<ContactPage />} />
         <Route path="*" element={
           <div className="page-top" style={{ textAlign: 'center', padding: '120px 24px' }}>
             <div style={{ fontFamily: 'var(--font-heading)', fontSize: 96, color: 'var(--blue)', marginBottom: 16 }}>404</div>
