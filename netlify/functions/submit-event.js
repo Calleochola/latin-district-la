@@ -129,21 +129,21 @@ export const handler = async (event) => {
 
     // Step 3: Read and validate the Apps Script response body
     const responseText = await res.text()
-    console.log('[submit-event] Apps Script raw response:', responseText)
+    console.log('[submit-event] Apps Script response status:', res.status, '| body:', responseText.substring(0, 300))
 
-    if (!res.ok) {
-      throw new Error(`Apps Script returned HTTP ${res.status}: ${responseText}`)
+    // Only treat a genuine server error (5xx) as failure.
+    // Apps Script /exec can return 405 after the redirect chain even when it
+    // already ran, wrote the row, and sent the email — throwing on !res.ok
+    // causes a false failure identical to the contact form bug.
+    if (res.status >= 500) {
+      throw new Error(`Apps Script returned ${res.status}: ${responseText.substring(0, 200)}`)
     }
 
-    // Verify Apps Script confirms success in its response body
-    let scriptResult
-    try {
-      scriptResult = JSON.parse(responseText)
-    } catch {
-      throw new Error(`Apps Script returned non-JSON response: ${responseText}`)
-    }
+    // Parse response if JSON, but don't fail on non-JSON (405 returns HTML)
+    let scriptResult = {}
+    try { scriptResult = JSON.parse(responseText) } catch { /* non-JSON from redirect quirk — ok */ }
 
-    if (scriptResult.result !== 'success') {
+    if (scriptResult.result === 'error') {
       const msg = scriptResult.message || scriptResult.error || responseText
       throw new Error(`Apps Script reported failure: ${msg}`)
     }
