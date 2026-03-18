@@ -209,7 +209,11 @@ function useSheets() {
     fetch('/.netlify/functions/sheets')
       .then(r => r.json())
       .then(d => {
-        setData(d)
+        // Merge into defaults so a partial/error response never nukes an array key
+        setData(prev => ({ ...prev, ...d }))
+        if (!Array.isArray(d.watchfest) || d.watchfest.length === 0) {
+          console.warn('[sheets] watchfest missing or empty in response', d)
+        }
         setLoading(false)
       })
       .catch(e => {
@@ -1170,8 +1174,10 @@ function FridayNightPage({ data, loading }) {
 function WatchFestPage({ data, loading }) {
   const [activeTab, setActiveTab] = useState('all')
   const allEvents = Array.isArray(data.watchfest) ? data.watchfest.filter(item => {
-    if (item.active === 'no') return false
-    if (item.status && item.status.toLowerCase() !== 'approved') return false
+    const active = (item.active || '').toLowerCase()
+    if (active === 'no' || active === 'false') return false
+    const status = (item.status || '').toLowerCase()
+    if (status === 'cancelled' || status === 'rejected') return false
     return true
   }) : []
   const worldCupEvents = allEvents.filter(item => getWatchfestCategory(item) === 'worldcup')
@@ -2151,8 +2157,10 @@ function CalendarPage({ data, loading }) {
   }), [data.events])
 
   const approvedWatchfest = useMemo(() => (data.watchfest || []).filter(w => {
-    if (w.active === 'no' || w.active === 'FALSE') return false
-    if (w.status && w.status.toLowerCase() !== 'approved') return false
+    const active = (w.active || '').toLowerCase()
+    if (active === 'no' || active === 'false') return false
+    const status = (w.status || '').toLowerCase()
+    if (status === 'cancelled' || status === 'rejected') return false
     return true
   }), [data.watchfest])
 

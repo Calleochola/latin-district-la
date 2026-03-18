@@ -120,38 +120,51 @@ async function fetchTab(name) {
 }
 
 // ── Handler ───────────────────────────────────────────────────────────────
+// Uses Promise.allSettled so one failing tab never kills the whole payload.
+// Each tab falls back to [] independently; the response is always HTTP 200.
 
 export const handler = async () => {
-  try {
-    const [eventsRaw, venuesRaw, watchfestRaw, barcrawlRaw] = await Promise.all([
+  const [eventsResult, venuesResult, watchfestResult, barcrawlResult] =
+    await Promise.allSettled([
       fetchTab(TABS.events),
       fetchTab(TABS.venues),
       fetchTab(TABS.watchfest),
       fetchTab(TABS.barcrawl),
     ])
 
-    const payload = {
-      events:    transformEvents(eventsRaw),
-      venues:    transformVenues(venuesRaw),
-      watchfest: transformWatchFest(watchfestRaw),
-      barcrawl:  barcrawlRaw,
+  // Per-tab diagnostics — visible in Netlify function logs
+  for (const [name, result] of [
+    [TABS.events,    eventsResult],
+    [TABS.venues,    venuesResult],
+    [TABS.watchfest, watchfestResult],
+    [TABS.barcrawl,  barcrawlResult],
+  ]) {
+    if (result.status === 'fulfilled') {
+      console.log(`[sheets] ${name}: ${result.value.length} rows`)
+    } else {
+      console.error(`[sheets] ${name}: FAILED — ${result.reason?.message}`)
     }
+  }
 
-    return {
-      statusCode: 200,
-      headers: {
-        'Content-Type':  'application/json',
-        'Cache-Control': 'public, max-age=300, s-maxage=300',
-        'Access-Control-Allow-Origin': '*',
-      },
-      body: JSON.stringify(payload),
-    }
-  } catch (err) {
-    console.error('sheets function error:', err)
-    return {
-      statusCode: 500,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ error: err.message }),
-    }
+  const eventsRaw    = eventsResult.status    === 'fulfilled' ? eventsResult.value    : []
+  const venuesRaw    = venuesResult.status    === 'fulfilled' ? venuesResult.value    : []
+  const watchfestRaw = watchfestResult.status === 'fulfilled' ? watchfestResult.value : []
+  const barcrawlRaw  = barcrawlResult.status  === 'fulfilled' ? barcrawlResult.value  : []
+
+  const payload = {
+    events:    transformEvents(eventsRaw),
+    venues:    transformVenues(venuesRaw),
+    watchfest: transformWatchFest(watchfestRaw),
+    barcrawl:  barcrawlRaw,
+  }
+
+  return {
+    statusCode: 200,
+    headers: {
+      'Content-Type':  'application/json',
+      'Cache-Control': 'public, max-age=300, s-maxage=300',
+      'Access-Control-Allow-Origin': '*',
+    },
+    body: JSON.stringify(payload),
   }
 }
