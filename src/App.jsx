@@ -478,18 +478,30 @@ function WatchFestCard({ item }) {
         <MediaCarousel mediaUrls={mediaUrls} mediaTypes={mediaTypes} />
       )}
       <div className="event-card__body">
-        {/* ESPN Header: flags → stage → match name */}
+        {/* Title hierarchy:
+            With team_flags → flags are the large hero heading; match_name is a small subtitle below.
+            Without team_flags → match_name / event_name is the regular heading (unchanged). */}
         {item.team_flags && (
-          <div style={{ fontSize: 24, marginBottom: 4, letterSpacing: '0.05em' }}>{item.team_flags}</div>
+          <div style={{ fontFamily: 'var(--font-heading)', fontSize: 'clamp(26px, 7vw, 38px)', color: 'var(--cream)', lineHeight: 1, marginBottom: 4, letterSpacing: '0.06em' }}>
+            {item.team_flags}
+          </div>
         )}
         {item.match_stage && (
           <div style={{ fontFamily: 'var(--font-label)', fontSize: 11, letterSpacing: '.1em', textTransform: 'uppercase', color: accentColor, marginBottom: 4 }}>
             {item.match_stage}
           </div>
         )}
-        <div style={{ fontFamily: 'var(--font-heading)', fontSize: 'clamp(15px, 4vw, 20px)', color: 'var(--cream)', lineHeight: 1.1, marginBottom: 8 }}>
-          {title}
-        </div>
+        {item.team_flags ? (
+          (item.match_name || item.event_name) ? (
+            <div style={{ fontFamily: 'var(--font-label)', fontSize: 13, color: 'var(--muted)', letterSpacing: '.02em', marginBottom: 8 }}>
+              {item.match_name || item.event_name}
+            </div>
+          ) : null
+        ) : (
+          <div style={{ fontFamily: 'var(--font-heading)', fontSize: 'clamp(15px, 4vw, 20px)', color: 'var(--cream)', lineHeight: 1.1, marginBottom: 8 }}>
+            {title}
+          </div>
+        )}
 
         {/* Badges */}
         <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', marginBottom: 8 }}>
@@ -568,7 +580,7 @@ const NAV_LINKS = [
   { to: '/watchfest',    label: 'Watch Fest' },
   { to: '/events',       label: 'Events' },
   { to: '/calendar',     label: 'Calendar' },
-  { to: '/friday-night', label: 'Friday Night Latin District' },
+  { to: '/friday-night', label: 'Friday Night' },
   { to: '/resources',    label: 'Resources' },
   { to: '/contact',      label: 'Contact' },
 ]
@@ -1055,7 +1067,29 @@ function VenuesPage({ data, loading }) {
 // ── FRIDAY NIGHT PAGE ───────────────────────────────────────────────────────
 
 function FridayNightPage({ data, loading }) {
-  const events = data.events.filter(e => e.event_type === 'friday_night' && e.active !== 'no')
+  // Events tab: active/approved rows whose date falls on a Friday
+  const fridayEvents = useMemo(() =>
+    data.events.filter(e => {
+      if (e.active === 'no') return false
+      if (e.status && e.status.toLowerCase() !== 'approved') return false
+      const d = parseEventDate(e.date)
+      return d !== null && d.getDay() === 5
+    })
+  , [data.events])
+
+  // WatchFest tab: active rows whose event date falls on a Friday (getDay() === 5)
+  const fridayWatchfest = useMemo(() =>
+    (data.watchfest || []).filter(w => {
+      const active = (w.active || '').toLowerCase()
+      if (active === 'no' || active === 'false') return false
+      const status = (w.status || '').toLowerCase()
+      if (status === 'cancelled' || status === 'rejected') return false
+      const d = parseEventDate(w.date)
+      return d !== null && d.getDay() === 5
+    })
+  , [data.watchfest])
+
+  const hasAny = fridayEvents.length > 0 || fridayWatchfest.length > 0
 
   return (
     <div className="page-top">
@@ -1086,8 +1120,11 @@ function FridayNightPage({ data, loading }) {
           <h2 className="section-heading neon-red mb-32" style={{ color: 'var(--red)' }}>LIVE LINEUP</h2>
           {loading ? (
             <div className="events-grid">{[1,2,3].map(i => <SkeletonCard key={i} />)}</div>
-          ) : events.length > 0 ? (
-            <div className="events-grid">{events.map((e, i) => <EventCard key={i} event={e} />)}</div>
+          ) : hasAny ? (
+            <div className="events-grid">
+              {fridayEvents.map((e, i) => <EventCard key={`ev-${i}`} event={e} />)}
+              {fridayWatchfest.map((w, i) => <WatchFestCard key={`wf-${i}`} item={w} />)}
+            </div>
           ) : (
             <div className="empty-state">
               <div className="empty-state__icon">🎵</div>
@@ -2221,6 +2258,11 @@ function CalendarPage({ data, loading }) {
     <div className="page-top">
       <section className="section">
         <div className="container">
+          <div style={{ marginBottom: 20 }}>
+            <Link to="/events" className="btn btn-outline-blue" style={{ fontSize: 13, padding: '8px 16px', minHeight: 36 }}>
+              ← Back to Events
+            </Link>
+          </div>
           <LiveBadge />
           <div className="section-tag">Upcoming Events</div>
           <h1 className="section-heading neon-blue mb-32">CALENDAR</h1>

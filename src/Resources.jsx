@@ -182,15 +182,15 @@ export default function Resources() {
                 <span className="quick-action-icon" aria-hidden="true">🗺️</span>
                 <span className="quick-action-label">Metro Trip Planner</span>
               </a>
-              <a href="https://www.metro.net/riding/real-time-arrivals/" target="_blank" rel="noopener noreferrer" className="quick-action-card">
+              <a href="https://www.metro.net/riding/nextrip/" target="_blank" rel="noopener noreferrer" className="quick-action-card">
                 <span className="quick-action-icon" aria-hidden="true">🚌</span>
                 <span className="quick-action-label">Metro Arrivals</span>
               </a>
-              <a href="https://www.metro.net/service/alerts/" target="_blank" rel="noopener noreferrer" className="quick-action-card">
+              <a href="https://emergency.lacity.gov/notifyla" target="_blank" rel="noopener noreferrer" className="quick-action-card">
                 <span className="quick-action-icon" aria-hidden="true">⚠️</span>
-                <span className="quick-action-label">Service Alerts</span>
+                <span className="quick-action-label">Service Alerts / NotifyLA</span>
               </a>
-              <a href="https://myla311.lacity.org/" target="_blank" rel="noopener noreferrer" className="quick-action-card">
+              <a href="https://myla311.lacity.gov/s/" target="_blank" rel="noopener noreferrer" className="quick-action-card">
                 <span className="quick-action-icon" aria-hidden="true">📋</span>
                 <span className="quick-action-label">MyLA311</span>
               </a>
@@ -226,7 +226,8 @@ export default function Resources() {
           </Accordion>
 
           {/* ── C: BIDs & Safety Escorts ── */}
-          <Accordion title="BIDs & Safety Escorts">
+          <div className="resources-section">
+            <h2 className="resources-section__title">BIDs & Safety Escorts</h2>
             <p className="resources-note">
               Business Improvement Districts run safety patrols and escort services across DTLA.
               Availability varies by district — always call ahead to confirm.
@@ -236,7 +237,7 @@ export default function Resources() {
                 <ResourceCard key={bid.name} {...bid} />
               ))}
             </div>
-          </Accordion>
+          </div>
 
           {/* ── D: Community Support ── */}
           <div className="resources-section">
