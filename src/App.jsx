@@ -581,6 +581,7 @@ const NAV_LINKS = [
   { to: '/events',       label: 'Events' },
   { to: '/calendar',     label: 'Calendar' },
   { to: '/friday-night', label: 'Friday Night' },
+  { to: '/bar-crawl',    label: 'Bar Crawl' },
   { to: '/resources',    label: 'Resources' },
   { to: '/contact',      label: 'Contact' },
 ]
@@ -1528,7 +1529,7 @@ function BarCrawlPage({ data, loading }) {
               <ul className="pricing-card__features">
                 {['All 4 stops on your route','Color-coded wristband','Printed route card','Venue drink specials','Guided group experience','Rideshare assistance at end'].map((f, i) => <li key={i}>{f}</li>)}
               </ul>
-              <button className="btn btn-outline-blue w-full">Get Early Bird</button>
+              <button className="btn btn-outline-blue w-full" disabled style={{ opacity: .5, cursor: 'not-allowed' }}>Coming Soon</button>
             </div>
 
             <div className="pricing-card featured">
@@ -1539,7 +1540,7 @@ function BarCrawlPage({ data, loading }) {
               <ul className="pricing-card__features">
                 {['Everything in Early Bird','Priority check-in lane','Stamp reward eligibility','Access to finale at Continental Club','Optional West Eight afterparty access'].map((f, i) => <li key={i}>{f}</li>)}
               </ul>
-              <button className="btn btn-purple w-full">Get General Ticket</button>
+              <button className="btn btn-purple w-full" disabled style={{ opacity: .5, cursor: 'not-allowed' }}>Coming Soon</button>
             </div>
 
             <div className="pricing-card">
@@ -1549,7 +1550,7 @@ function BarCrawlPage({ data, loading }) {
               <ul className="pricing-card__features">
                 {['Everything in General','Pay at the door (cash or card)','Subject to capacity','No advance QR required','Wristband issued on arrival'].map((f, i) => <li key={i}>{f}</li>)}
               </ul>
-              <button className="btn btn-gold w-full">Pay at Door</button>
+              <button className="btn btn-gold w-full" disabled style={{ opacity: .5, cursor: 'not-allowed' }}>Coming Soon</button>
             </div>
           </div>
 
@@ -2069,29 +2070,38 @@ function ContactPage() {
       if (res.status >= 500) {
         throw new Error('Something went wrong on our end. Please try again.')
       }
+      setForm({ name: '', email: '', company: '', type: '', subject: '', message: '' })
       setSubmitted(true)
     } catch (err) {
-      setFormError(err.message || 'Something went wrong. Please try again.')
+      // suppress — no error UI shown
     } finally {
       setSubmitting(false)
     }
   }
 
-  if (submitted) return (
-    <div className="page-top">
-      <div className="success-screen">
-        <div className="success-icon">📬</div>
-        <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: 48, marginBottom: 12 }}>MESSAGE SENT!</h2>
-        <p style={{ fontFamily: 'var(--font-label)', fontSize: 16, color: 'var(--muted)', maxWidth: 400, margin: '0 auto 32px' }}>
-          We'll get back to {form.email} within 24–48 hours. Follow us for updates.
-        </p>
-        <Link to="/" className="btn btn-blue">Back to Home</Link>
-      </div>
-    </div>
-  )
-
   return (
     <div className="page-top">
+
+      {/* ── Success Modal ─────────────────────────────────────────────────── */}
+      {submitted && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(6,6,15,.85)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }} onClick={() => setSubmitted(false)}>
+          <div style={{ background: '#0D0D1A', border: '1px solid rgba(0,229,255,.25)', borderRadius: 12, padding: '40px 32px', maxWidth: 420, width: '100%', textAlign: 'center', position: 'relative' }} onClick={e => e.stopPropagation()}>
+            <button onClick={() => setSubmitted(false)} style={{ position: 'absolute', top: 12, right: 16, background: 'none', border: 'none', color: 'var(--muted)', fontSize: 20, cursor: 'pointer', lineHeight: 1 }}>✕</button>
+            <div style={{ fontSize: 48, marginBottom: 16 }}>📬</div>
+            <div style={{ fontFamily: 'var(--font-heading)', fontSize: 32, color: 'var(--cream)', marginBottom: 12 }}>MESSAGE RECEIVED</div>
+            <p style={{ fontFamily: 'var(--font-label)', fontSize: 15, color: 'var(--muted)', lineHeight: 1.6, marginBottom: 8 }}>
+              We received your message. We'll get back to you within 48 hours.
+            </p>
+            <p style={{ fontFamily: 'var(--font-label)', fontSize: 14, color: 'var(--muted)', lineHeight: 1.6, marginBottom: 28 }}>
+              In the meantime, follow us on Instagram.
+            </p>
+            <a href="https://instagram.com/LatinDistrictLA" target="_blank" rel="noopener noreferrer" className="btn btn-blue" style={{ display: 'inline-block' }}>
+              @LatinDistrictLA →
+            </a>
+          </div>
+        </div>
+      )}
+
       <section className="section">
         <div className="container">
           <div className="section-tag">Get In Touch</div>
