@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
+import { createPortal } from 'react-dom'
 import { BrowserRouter, Routes, Route, Link, NavLink, useNavigate } from 'react-router-dom'
 import MediaCarousel from './MediaCarousel'
 import Resources from './Resources'
@@ -343,7 +344,10 @@ function EventCard({ event }) {
           )}
         </div>
       </div>
-      {modalOpen && <EventModal event={event} onClose={() => setModalOpen(false)} />}
+      {modalOpen && createPortal(
+        <EventModal event={event} onClose={() => setModalOpen(false)} />,
+        document.body
+      )}
     </>
   )
 }
