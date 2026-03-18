@@ -238,11 +238,11 @@ function NeonDivider() {
   return <hr className="neon-divider" />
 }
 
-// ── Event detail modal (opened on card click) ────────────────────────────────
+// ── Event detail modal ────────────────────────────────────────────────────────
 
 function EventModal({ event, onClose }) {
-  const badge   = BADGE_COLORS[event.event_type] || BADGE_COLORS.special
-  const imgUrl  = convertDriveUrl(event.flyer_image_url)
+  const badge  = BADGE_COLORS[event.event_type] || BADGE_COLORS.special
+  const imgUrl = convertDriveUrl(event.flyer_image_url)
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'instant' })
@@ -289,7 +289,7 @@ function EventModal({ event, onClose }) {
             </a>
           ) : (
             <p style={{ fontFamily: 'var(--font-label)', fontSize: 13, color: 'var(--muted)', textAlign: 'center' }}>
-              No ticket link available for this event
+              No ticket link available
             </p>
           )}
         </div>
