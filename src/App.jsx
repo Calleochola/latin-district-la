@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { BrowserRouter, Routes, Route, Link, NavLink, useNavigate, useLocation, useSearchParams } from 'react-router-dom'
 import MediaCarousel from './MediaCarousel'
 import Resources from './Resources'
+import { trackPageview, trackTicketClick, trackContactSubmit, trackEventSubmit } from './analytics.js'
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
@@ -302,7 +303,7 @@ function EventModal({ event, onClose }) {
             </p>
           )}
           {event.ticket_link ? (
-            <a href={event.ticket_link} target="_blank" rel="noopener noreferrer" className="btn btn-red w-full" style={{ fontSize: 14, padding: '12px 20px' }}>
+            <a href={event.ticket_link} target="_blank" rel="noopener noreferrer" className="btn btn-red w-full" style={{ fontSize: 14, padding: '12px 20px' }} onClick={() => trackTicketClick(event, 'nightlife')}>
               Get Tickets →
             </a>
           ) : (
@@ -363,7 +364,7 @@ function EventCard({ event }) {
               rel="noopener noreferrer"
               className="btn btn-red w-full"
               style={{ marginTop: 4, fontSize: 13, padding: '10px 16px' }}
-              onClick={e => e.stopPropagation()}
+              onClick={e => { e.stopPropagation(); trackTicketClick(event, 'nightlife') }}
             >
               Get Tickets →
             </a>
@@ -548,7 +549,7 @@ function WatchFestCard({ item }) {
 
         {/* Ticket CTA */}
         {item.ticket_link ? (
-          <a href={item.ticket_link} target="_blank" rel="noopener noreferrer" className="btn btn-red w-full" style={{ marginTop: 4, fontSize: 13, padding: '10px 16px' }}>
+          <a href={item.ticket_link} target="_blank" rel="noopener noreferrer" className="btn btn-red w-full" style={{ marginTop: 4, fontSize: 13, padding: '10px 16px' }} onClick={() => trackTicketClick(item, 'watchfest')}>
             Get Tickets →
           </a>
         ) : (
@@ -745,7 +746,7 @@ function HomePage({ data, loading }) {
                     </p>
                   )}
                   {flagshipEvent.ticket_link ? (
-                    <a href={flagshipEvent.ticket_link} target="_blank" rel="noopener noreferrer" className="btn btn-red">
+                    <a href={flagshipEvent.ticket_link} target="_blank" rel="noopener noreferrer" className="btn btn-red" onClick={() => trackTicketClick(flagshipEvent, 'nightlife')}>
                       Get Tickets →
                     </a>
                   ) : (
@@ -793,7 +794,7 @@ function HomePage({ data, loading }) {
                     {flagshipWatchFest.tailgate_time && <span>🎉 Tailgate {flagshipWatchFest.tailgate_time}</span>}
                   </div>
                   {flagshipWatchFest.ticket_link ? (
-                    <a href={flagshipWatchFest.ticket_link} target="_blank" rel="noopener noreferrer" className="btn btn-gold">Get Tickets →</a>
+                    <a href={flagshipWatchFest.ticket_link} target="_blank" rel="noopener noreferrer" className="btn btn-gold" onClick={() => trackTicketClick(flagshipWatchFest, 'watchfest')}>Get Tickets →</a>
                   ) : (
                     <Link to="/watchfest" className="btn btn-outline-blue">See Watch Fest →</Link>
                   )}
@@ -1432,7 +1433,7 @@ function WatchFestPage({ data, loading }) {
                 </p>
               )}
               {flagship.ticket_link ? (
-                <a href={flagship.ticket_link} target="_blank" rel="noopener noreferrer" className="btn btn-gold">Get Tickets →</a>
+                <a href={flagship.ticket_link} target="_blank" rel="noopener noreferrer" className="btn btn-gold" onClick={() => trackTicketClick(flagship, 'watchfest')}>Get Tickets →</a>
               ) : (
                 <button className="btn btn-outline-blue">Ticket Link Coming Soon</button>
               )}
@@ -1894,6 +1895,7 @@ function SubmitEventPage() {
         throw new Error(resBody.error || 'Submission failed. Please try again.')
       }
 
+      trackEventSubmit(form.event_name)
       navigate('/?success=event', { replace: true })
     } catch (err) {
       setFormError(err.message || 'Submission failed. Please try again.')
@@ -2116,6 +2118,7 @@ function ContactPage() {
         body: JSON.stringify({ ...form, cf_token: cfToken }),
       })
       if (res.status >= 500) return  // suppress — email was still sent
+      trackContactSubmit()
       navigate('/?success=contact', { replace: true })
     } catch {
       // network error — suppress
@@ -2422,7 +2425,7 @@ function CalendarPage({ data, loading }) {
                             rel="noopener noreferrer"
                             className="btn btn-red"
                             style={{ fontSize: 12, padding: '8px 12px', minHeight: 34, flexShrink: 0, alignSelf: 'center' }}
-                            onClick={e => e.stopPropagation()}
+                            onClick={e => { e.stopPropagation(); trackTicketClick(normalised, isWf ? 'watchfest' : 'nightlife') }}
                           >Tickets →</a>
                         )}
                       </div>
@@ -2503,6 +2506,7 @@ function CalendarPage({ data, loading }) {
                           rel="noopener noreferrer"
                           className="btn btn-red"
                           style={{ fontSize: 12, padding: '8px 14px', minHeight: 36, flexShrink: 0, alignSelf: 'center' }}
+                          onClick={() => trackTicketClick(item, isWf ? 'watchfest' : 'nightlife')}
                         >
                           Tickets →
                         </a>
@@ -2540,6 +2544,7 @@ function ScrollToTop() {
   useEffect(() => {
     window.history.scrollRestoration = 'manual'
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
+    trackPageview()
   }, [pathname])
   return null
 }
