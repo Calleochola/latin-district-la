@@ -77,7 +77,8 @@ function transformEvents(rows) {
 function transformVenues(rows) {
   return rows.map(r => ({
     ...r,
-    photo_url: convertDriveUrl(r.photo_url),
+    photo_url:       convertDriveUrl(r.photo_url),
+    venue_image_url: convertDriveUrl(r.venue_image_url),
   }))
 }
 

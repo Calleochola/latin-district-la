@@ -97,6 +97,46 @@ function parseEventDate(str) {
   return isNaN(d.getTime()) ? null : d
 }
 
+// Returns true only for active = yes/true (case-insensitive).
+// Rejects 'no', 'false', '', and any other value.
+function isActiveItem(active) {
+  const v = (active || '').toLowerCase().trim()
+  return v === 'yes' || v === 'true'
+}
+
+// Returns true if the event is in the future (or if date is unparseable — fail-safe).
+// For WatchFest items, prefers kickoff_datetime; falls back to date + time.
+// If time is missing, treats end-of-day as the cutoff.
+function isUpcoming(item) {
+  try {
+    if (item.kickoff_datetime) {
+      const dt = new Date(item.kickoff_datetime)
+      if (!isNaN(dt.getTime())) return dt.getTime() > Date.now()
+    }
+    if (!item.date) return true
+    const d = parseEventDate(item.date)
+    if (!d) return true
+    if (item.time) {
+      const m = item.time.match(/(\d+):(\d+)\s*(am|pm)?/i)
+      if (m) {
+        let h = parseInt(m[1])
+        const min = parseInt(m[2])
+        const ap = (m[3] || '').toLowerCase()
+        if (ap === 'pm' && h !== 12) h += 12
+        if (ap === 'am' && h === 12) h = 0
+        d.setHours(h, min, 59, 999)
+      } else {
+        d.setHours(23, 59, 59, 999)
+      }
+    } else {
+      d.setHours(23, 59, 59, 999)
+    }
+    return d.getTime() > Date.now()
+  } catch {
+    return true
+  }
+}
+
 function formatDate(str) {
   if (!str) return ''
   try {
@@ -380,7 +420,7 @@ function EventCard({ event }) {
 }
 
 function VenueCard({ venue }) {
-  const imgUrl = convertDriveUrl(venue.photo_url)
+  const imgUrl = convertDriveUrl(venue.photo_url || venue.venue_image_url)
   return (
     <div className="venue-card">
       <div className="venue-card__photo">
@@ -669,11 +709,11 @@ function HomePage({ data, loading }) {
     }
   }, [])
 
-  const featured = data.events.filter(e => e.featured === 'yes' && e.active !== 'no')
-  const flagshipEvent = data.events.find(e => e.active !== 'no' && isFlagshipItem(e))
-  const flagshipWatchFest = (data.watchfest || []).find(e => e.active !== 'no' && isFlagshipItem(e))
+  const featured = data.events.filter(e => e.featured === 'yes' && isActiveItem(e.active) && isUpcoming(e))
+  const flagshipEvent = data.events.find(e => isActiveItem(e.active) && isFlagshipItem(e) && isUpcoming(e))
+  const flagshipWatchFest = (data.watchfest || []).find(e => isActiveItem(e.active) && isFlagshipItem(e) && isUpcoming(e))
   const venueStrip = (data.venues.length > 0 ? data.venues : FALLBACK_VENUES)
-    .filter(v => v.active !== 'no')
+    .filter(v => isActiveItem(v.active))
     .slice(0, 8)
 
   const bannerMsg = successType === 'event'
@@ -1053,6 +1093,8 @@ function EventsPage({ data, loading }) {
     const status = (e.status || '').toLowerCase().trim()
     if (status && status !== 'approved') return false
 
+    if (!isUpcoming(e)) return false
+
     if (filter === 'all') return true
 
     // site_tab-based tab matching
@@ -1112,7 +1154,7 @@ function EventsPage({ data, loading }) {
 
 function VenuesPage({ data, loading }) {
   const venues = (data.venues.length > 0 ? data.venues : FALLBACK_VENUES)
-    .filter(v => v.active !== 'no')
+    .filter(v => isActiveItem(v.active))
 
   return (
     <div className="page-top">
@@ -1153,8 +1195,9 @@ function FridayNightPage({ data, loading }) {
   // Events tab: active/approved rows whose date falls on a Friday
   const fridayEvents = useMemo(() =>
     data.events.filter(e => {
-      if (e.active === 'no') return false
+      if (!isActiveItem(e.active)) return false
       if (e.status && e.status.toLowerCase() !== 'approved') return false
+      if (!isUpcoming(e)) return false
       const d = parseEventDate(e.date)
       return d !== null && d.getDay() === 5
     })
@@ -1163,10 +1206,10 @@ function FridayNightPage({ data, loading }) {
   // WatchFest tab: active rows whose event date falls on a Friday (getDay() === 5)
   const fridayWatchfest = useMemo(() =>
     (data.watchfest || []).filter(w => {
-      const active = (w.active || '').toLowerCase()
-      if (active === 'no' || active === 'false') return false
+      if (!isActiveItem(w.active)) return false
       const status = (w.status || '').toLowerCase()
       if (status === 'cancelled' || status === 'rejected') return false
+      if (!isUpcoming(w)) return false
       const d = parseEventDate(w.date)
       return d !== null && d.getDay() === 5
     })
@@ -1294,10 +1337,10 @@ function FridayNightPage({ data, loading }) {
 function WatchFestPage({ data, loading }) {
   const [activeTab, setActiveTab] = useState('all')
   const allEvents = Array.isArray(data.watchfest) ? data.watchfest.filter(item => {
-    const active = (item.active || '').toLowerCase()
-    if (active === 'no' || active === 'false') return false
+    if (!isActiveItem(item.active)) return false
     const status = (item.status || '').toLowerCase()
     if (status === 'cancelled' || status === 'rejected') return false
+    if (!isUpcoming(item)) return false
     return true
   }) : []
   const worldCupEvents = allEvents.filter(item => getWatchfestCategory(item) === 'worldcup')
@@ -2260,16 +2303,17 @@ function CalendarPage({ data, loading }) {
   // Only show approved + active items on the calendar and list
   // Old rows without a status field continue to show for backwards compatibility.
   const approvedEvents = useMemo(() => data.events.filter(e => {
-    if (e.active === 'no' || e.active === 'FALSE') return false
+    if (!isActiveItem(e.active)) return false
     if (e.status && e.status.toLowerCase() !== 'approved') return false
+    if (!isUpcoming(e)) return false
     return true
   }), [data.events])
 
   const approvedWatchfest = useMemo(() => (data.watchfest || []).filter(w => {
-    const active = (w.active || '').toLowerCase()
-    if (active === 'no' || active === 'false') return false
+    if (!isActiveItem(w.active)) return false
     const status = (w.status || '').toLowerCase()
     if (status === 'cancelled' || status === 'rejected') return false
+    if (!isUpcoming(w)) return false
     return true
   }), [data.watchfest])
 
