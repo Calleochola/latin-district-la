@@ -48,8 +48,11 @@ function gvizToRows(table) {
       keys.forEach((key, i) => {
         const cell = row.c && row.c[i]
         // Prefer cell.f (formatted display value) — handles gviz Date() objects
-        // gracefully, returning e.g. "3/20/2026" instead of "Date(2026,2,20)"
-        const raw = cell != null ? (cell.f ?? cell.v) : null
+        // gracefully, returning e.g. "3/20/2026" instead of "Date(2026,2,20)".
+        // Use || not ?? so that cell.f = "" (empty string, which gviz returns for
+        // boolean checkbox cells) falls through to cell.v (true/false boolean).
+        // ?? would keep the empty string and lose the boolean value entirely.
+        const raw = cell != null ? (cell.f || cell.v) : null
         obj[key] = raw !== null && raw !== undefined ? String(raw).trim() : ''
       })
       return obj

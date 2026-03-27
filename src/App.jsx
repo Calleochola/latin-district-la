@@ -88,20 +88,24 @@ function convertDriveUrl(url) {
 
 function parseEventDate(str) {
   if (!str) return null
-  // YYYY-MM-DD strings are parsed as UTC midnight by the JS spec, which shifts
-  // the date backward in negative-offset timezones (e.g. LA, UTC-7/8).
-  // Re-parse as local midnight to match the exact date shown in the sheet.
+  // YYYY-MM-DD: parse as local midnight (avoids UTC shift in negative-offset timezones)
   const iso = str.match(/^(\d{4})-(\d{2})-(\d{2})$/)
   if (iso) return new Date(+iso[1], +iso[2] - 1, +iso[3])
+  // gviz raw Date() format e.g. "Date(2026,2,20)" — month is already 0-indexed
+  const gviz = str.match(/^Date\((\d+),(\d+),(\d+)\)$/)
+  if (gviz) return new Date(+gviz[1], +gviz[2], +gviz[3])
   const d = new Date(str)
   return isNaN(d.getTime()) ? null : d
 }
 
-// Returns true only for active = yes/true (case-insensitive).
-// Rejects 'no', 'false', '', and any other value.
+// Returns false only when active is explicitly set to no/false (case-insensitive).
+// Treats empty/unknown values as active so legacy rows without the field still show.
+// Handles all gviz representations: 'TRUE'/'FALSE' text, boolean true/false converted
+// to strings, 'yes'/'no', and empty string (gviz emits "" for unconfigured cells).
 function isActiveItem(active) {
   const v = (active || '').toLowerCase().trim()
-  return v === 'yes' || v === 'true'
+  if (v === 'no' || v === 'false') return false
+  return true
 }
 
 // Returns true if the event is in the future (or if date is unparseable — fail-safe).
