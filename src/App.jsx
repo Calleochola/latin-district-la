@@ -1089,13 +1089,12 @@ function EventsPage({ data, loading }) {
   const [filter, setFilter] = useState('all')
 
   const events = data.events.filter(e => {
-    // Tolerant active check — accepts yes/Yes/YES/true/True/TRUE
-    const active = (e.active || '').toLowerCase().trim()
-    if (active !== 'yes' && active !== 'true') return false
+    if (!isActiveItem(e.active)) return false
 
-    // Tolerant status check — blank passes (legacy rows); otherwise must be approved
+    // Only block explicitly cancelled/rejected rows.
+    // submitted, approved, and blank all pass — active=TRUE is the publish gate.
     const status = (e.status || '').toLowerCase().trim()
-    if (status && status !== 'approved') return false
+    if (status === 'cancelled' || status === 'rejected') return false
 
     if (!isUpcoming(e)) return false
 
@@ -1200,7 +1199,8 @@ function FridayNightPage({ data, loading }) {
   const fridayEvents = useMemo(() =>
     data.events.filter(e => {
       if (!isActiveItem(e.active)) return false
-      if (e.status && e.status.toLowerCase() !== 'approved') return false
+      const estatus = (e.status || '').toLowerCase().trim()
+      if (estatus === 'cancelled' || estatus === 'rejected') return false
       if (!isUpcoming(e)) return false
       const d = parseEventDate(e.date)
       return d !== null && d.getDay() === 5
@@ -2308,7 +2308,8 @@ function CalendarPage({ data, loading }) {
   // Old rows without a status field continue to show for backwards compatibility.
   const approvedEvents = useMemo(() => data.events.filter(e => {
     if (!isActiveItem(e.active)) return false
-    if (e.status && e.status.toLowerCase() !== 'approved') return false
+    const estatus = (e.status || '').toLowerCase().trim()
+    if (estatus === 'cancelled' || estatus === 'rejected') return false
     if (!isUpcoming(e)) return false
     return true
   }), [data.events])
