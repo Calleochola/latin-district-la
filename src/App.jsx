@@ -582,6 +582,7 @@ const NAV_LINKS = [
   { to: '/events',       label: 'Events' },
   { to: '/calendar',     label: 'Calendar' },
   { to: '/friday-night', label: 'Friday Night' },
+  { to: '/venues',       label: 'Venues' },
   { to: '/bar-crawl',    label: 'Bar Crawl' },
   { to: '/resources',    label: 'Resources' },
   { to: '/contact',      label: 'Contact' },
@@ -695,14 +696,24 @@ function HomePage({ data, loading }) {
 
       {/* ── Hero ── */}
       <section className="hero scanlines">
+        <video
+          className="hero__video"
+          src={import.meta.env.VITE_HERO_VIDEO_URL || '/hero-video.mp4'}
+          autoPlay
+          muted
+          loop
+          playsInline
+          onError={e => { e.target.style.display = 'none' }}
+        />
         <div className="hero__bg" />
+        <div className="hero__overlay" />
         <div className="hero__content">
           <img src="/logo.png" alt="Latin District LA" className="hero__logo" onError={e => e.target.style.display = 'none'} />
           <div className="hero__headline">
             <div className="neon-white" style={{ color: '#fff' }}>LATIN</div>
             <div className="neon-white" style={{ color: '#fff' }}>DISTRICT</div>
           </div>
-          <p className="hero__sub">Multiple venues. One district. Every Friday night in DTLA.</p>
+          <p className="hero__sub">Multiple venues. One district. Los Angeles.</p>
           <div className="hero__buttons">
             <Link to="/events" className="btn btn-red">See This Week →</Link>
             <Link to="/bar-crawl" className="btn btn-outline-blue">Book Bar Crawl →</Link>

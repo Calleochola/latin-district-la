@@ -32,30 +32,12 @@ function parseGviz(raw) {
 
 /**
  * Convert gviz table → array of plain objects keyed by column label.
- *
- * gviz behaviour notes:
- *  - When the sheet has data rows, cols[].label is populated from row 1 (the
- *    header row) and table.rows contains only data rows.
- *  - When the sheet has ONLY a header row (no data rows yet), gviz returns
- *    generic col IDs ("a","b"…) and puts the header values in row 0.
- *    We detect this and promote row 0 to headers automatically.
  */
 function gvizToRows(table) {
   if (!table || !table.cols || !table.rows) return []
 
-  let cols = table.cols.map(c => (c.label || '').trim())
-  let rows = table.rows
-
-  // If all labels are empty, gviz didn't pick up headers — treat first data
-  // row as the header row (happens when there are no data rows in the sheet).
-  const hasLabels = cols.some(l => l !== '')
-  if (!hasLabels && rows.length > 0) {
-    const headerRow = rows[0]
-    cols = (headerRow.c || []).map(cell =>
-      cell && cell.v != null ? String(cell.v).trim() : ''
-    )
-    rows = rows.slice(1) // remaining rows are actual data
-  }
+  const cols = table.cols.map(c => (c.label || '').trim())
+  const rows = table.rows
 
   // Normalise column names to snake_case keys
   const keys = cols.map(l => l.toLowerCase().replace(/\s+/g, '_'))
