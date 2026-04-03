@@ -133,17 +133,18 @@ ul { list-style: none; }
 
 /* ── Cards ──────────────────────────────────────────── */
 .event-card {
-  background: var(--card-bg);
-  border: 1px solid rgba(0,229,255,.12);
+  background: #11112A;
+  border: 1px solid rgba(0,229,255,.18);
   overflow: hidden;
-  border-radius: 4px;
-  transition: transform .2s, box-shadow .2s;
+  border-radius: 14px;
+  transition: transform .22s ease, box-shadow .22s ease;
   display: flex;
   flex-direction: column;
+  box-shadow: 0 4px 24px rgba(0,0,0,.45);
 }
 .event-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 40px rgba(0,229,255,.15);
+  transform: scale(1.03);
+  box-shadow: 0 16px 48px rgba(0,229,255,.22), 0 4px 16px rgba(0,0,0,.6);
 }
 .event-card__image {
   position: relative;
@@ -182,7 +183,7 @@ ul { list-style: none; }
   color: var(--blue);
   margin-top: 4px;
 }
-.event-card__body { padding: 12px; margin-top: auto; }
+.event-card__body { padding: 16px; margin-top: auto; }
 .event-card__badge {
   display: inline-block;
   font-family: var(--font-label);
@@ -261,7 +262,7 @@ ul { list-style: none; }
 .events-grid {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 20px;
+  gap: 24px;
 }
 .venues-grid {
   display: grid;
@@ -1725,8 +1726,8 @@ ul { list-style: none; }
   will-change: transform;
 }
 .event-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 16px 48px rgba(0,229,255,.18);
+  transform: scale(1.03);
+  box-shadow: 0 16px 48px rgba(0,229,255,.22), 0 4px 16px rgba(0,0,0,.6);
 }
 
 /* Venue card hover polish */

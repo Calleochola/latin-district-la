@@ -157,6 +157,69 @@ function encode(data) {
     .join('&')
 }
 
+// ── Weekend event selection ──────────────────────────────────────────────────
+// Returns events happening this Fri/Sat/Sun (LA timezone).
+// Fallback: next 3–6 upcoming events if none found.
+function getThisWeekendEvents(events) {
+  // Resolve "today" in LA timezone
+  const laParts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Los_Angeles',
+    year: 'numeric', month: 'numeric', day: 'numeric',
+  }).formatToParts(new Date())
+  const getPart = type => parseInt(laParts.find(p => p.type === type)?.value || '0')
+  const todayLA = new Date(getPart('year'), getPart('month') - 1, getPart('day'))
+  const dow = todayLA.getDay() // 0=Sun … 5=Fri … 6=Sat
+
+  // Days from today to this week's Friday (negative = already passed)
+  const daysToFri = dow === 0 ? -2 : dow <= 4 ? 5 - dow : dow === 5 ? 0 : -1
+  const fridayLA  = new Date(todayLA); fridayLA.setDate(todayLA.getDate() + daysToFri)
+  const sundayLA  = new Date(fridayLA); sundayLA.setDate(fridayLA.getDate() + 2)
+
+  const isApproved = e => {
+    const s = (e.status || '').toLowerCase().trim()
+    return s !== 'cancelled' && s !== 'rejected'
+  }
+
+  const parseTime = timeStr => {
+    if (!timeStr) return 0
+    const m = timeStr.match(/(\d+):(\d+)\s*(am|pm)?/i)
+    if (!m) return 0
+    let h = parseInt(m[1]); const min = parseInt(m[2]); const ap = (m[3] || '').toLowerCase()
+    if (ap === 'pm' && h !== 12) h += 12
+    if (ap === 'am' && h === 12) h = 0
+    return h * 60 + min
+  }
+
+  const byDateThenTime = (a, b) => {
+    const da = parseEventDate(a.date), db = parseEventDate(b.date)
+    if (!da || !db) return 0
+    const diff = da.getTime() - db.getTime()
+    return diff !== 0 ? diff : parseTime(a.time) - parseTime(b.time)
+  }
+
+  // Weekend events: active, approved, upcoming, and date falls on Fri/Sat/Sun
+  const weekendEvents = events
+    .filter(e => {
+      if (!isActiveItem(e.active) || !isApproved(e) || !isUpcoming(e)) return false
+      const d = parseEventDate(e.date)
+      if (!d) return false
+      const midnight = new Date(d.getFullYear(), d.getMonth(), d.getDate())
+      return midnight >= fridayLA && midnight <= sundayLA
+    })
+    .sort(byDateThenTime)
+    .slice(0, 6)
+
+  if (weekendEvents.length > 0) return { events: weekendEvents, isWeekend: true }
+
+  // Fallback: next upcoming events (3–6)
+  const fallback = events
+    .filter(e => isActiveItem(e.active) && isApproved(e) && isUpcoming(e))
+    .sort(byDateThenTime)
+    .slice(0, 6)
+
+  return { events: fallback, isWeekend: false }
+}
+
 // Countdown timer helpers
 function calcTimeLeft(dateStr) {
   if (!dateStr) return null
@@ -398,8 +461,8 @@ function EventCard({ event }) {
           </div>
         )}
         <div className="event-card__body">
-          <div style={{ fontFamily: 'var(--font-heading)', fontSize: 'clamp(14px, 4vw, 18px)', color: 'var(--cream)', marginBottom: 4 }}>{event.event_name}</div>
-          <div style={{ fontFamily: 'var(--font-label)', fontSize: 13, color: 'var(--muted)', marginBottom: 8 }}>{event.venue} · {formatDate(event.date)}{event.time ? ` · ${event.time}` : ''}</div>
+          <div style={{ fontFamily: 'var(--font-heading)', fontSize: 'clamp(15px, 4vw, 20px)', color: '#fff', fontWeight: 700, marginBottom: 6, lineHeight: 1.15 }}>{event.event_name}</div>
+          <div style={{ fontFamily: 'var(--font-label)', fontSize: 13, color: '#9090C0', marginBottom: 10, letterSpacing: '.02em' }}>{event.venue} · {formatDate(event.date)}{event.time ? ` · ${event.time}` : ''}</div>
           <span className="event-card__badge" style={{ background: badge.bg, color: badge.color }}>{badge.label}</span>
           {event.ticket_link && (
             <a
@@ -407,10 +470,10 @@ function EventCard({ event }) {
               target="_blank"
               rel="noopener noreferrer"
               className="btn btn-red w-full"
-              style={{ marginTop: 4, fontSize: 13, padding: '10px 16px' }}
+              style={{ marginTop: 10, fontSize: 14, padding: '12px 18px', fontWeight: 700, borderRadius: 24, letterSpacing: '.06em' }}
               onClick={e => { e.stopPropagation(); trackTicketClick(event, 'nightlife') }}
             >
-              Get Tickets →
+              GET TICKETS →
             </a>
           )}
         </div>
@@ -713,7 +776,7 @@ function HomePage({ data, loading }) {
     }
   }, [])
 
-  const featured = data.events.filter(e => e.featured === 'yes' && isActiveItem(e.active) && isUpcoming(e))
+  const { events: weekendEvents, isWeekend } = getThisWeekendEvents(data.events)
   const flagshipEvent = data.events.find(e => isActiveItem(e.active) && isFlagshipItem(e) && isUpcoming(e))
   const flagshipWatchFest = (data.watchfest || []).find(e => isActiveItem(e.active) && isFlagshipItem(e) && isUpcoming(e))
   const venueStrip = (data.venues.length > 0 ? data.venues : FALLBACK_VENUES)
@@ -861,16 +924,19 @@ function HomePage({ data, loading }) {
         </>
       )}
 
-      {/* ── Featured Events ── */}
+      {/* ── This Weekend Events ── */}
       <section className="section">
         <div className="container">
-          <div className="section-tag">Featured Events</div>
-          <h2 className="section-heading neon-blue">THIS WEEK</h2>
+          <div className="section-tag">This Weekend in DTLA</div>
+          <h2 className="section-heading neon-blue">THIS WEEKEND IN DTLA</h2>
+          <p style={{ fontFamily: 'var(--font-label)', fontSize: 15, color: 'var(--muted)', marginBottom: 28, marginTop: -8 }}>
+            Your plan for Friday, Saturday &amp; Sunday
+          </p>
           {loading ? (
             <div className="events-grid">{[1,2,3].map(i => <SkeletonCard key={i} />)}</div>
-          ) : featured.length > 0 ? (
+          ) : weekendEvents.length > 0 ? (
             <div className="events-grid">
-              {featured.map((e, i) => <EventCard key={i} event={e} />)}
+              {weekendEvents.map((e, i) => <EventCard key={i} event={e} />)}
             </div>
           ) : (
             <div className="empty-state">
