@@ -898,7 +898,8 @@ function HomePage({ data, loading }) {
                     <img
                       src={convertDriveUrl(flagshipEvent.flyer_image_url)}
                       alt={flagshipEvent.event_name}
-                      style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', opacity: 0, transition: 'opacity .35s ease' }}
+                      onLoad={e => { e.target.style.opacity = '1' }}
                     />
                     <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(6,6,15,.85) 0%, transparent 60%)' }} />
                   </div>
@@ -946,7 +947,7 @@ function HomePage({ data, loading }) {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 28, alignItems: 'center' }}>
                 {flagshipWatchFest.flyer_image_url && (
                   <div style={{ borderRadius: 4, overflow: 'hidden', maxHeight: 360, position: 'relative' }}>
-                    <img src={flagshipWatchFest.flyer_image_url} alt={flagshipWatchFest.match_name || 'Watch Fest'} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                    <img src={flagshipWatchFest.flyer_image_url} alt={flagshipWatchFest.match_name || 'Watch Fest'} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', opacity: 0, transition: 'opacity .35s ease' }} onLoad={e => { e.target.style.opacity = '1' }} />
                     <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(6,6,15,.85) 0%, transparent 60%)' }} />
                   </div>
                 )}
@@ -992,7 +993,7 @@ function HomePage({ data, loading }) {
           {loading ? (
             <div className="events-grid">{[1,2,3].map(i => <SkeletonCard key={i} />)}</div>
           ) : weekendEvents.length > 0 ? (
-            <div className="events-grid">
+            <div className="events-grid content-reveal">
               {weekendEvents.map((e, i) => <EventCard key={i} event={e} />)}
             </div>
           ) : (
@@ -2734,6 +2735,26 @@ function ScrollToTop() {
 
 export default function App() {
   const { data, loading } = useSheets()
+
+  // Preload above-fold images once sheet data is ready.
+  // Uses new Image() — pure browser hint, no extra Netlify function calls.
+  useEffect(() => {
+    if (loading) return
+    const srcs = []
+    const evts = data.events   || []
+    const wf   = data.watchfest || []
+
+    const flagship   = evts.find(e => isActiveItem(e.active) && isFlagshipItem(e) && isUpcoming(e))
+    const flagshipWF = wf.find(e  => isActiveItem(e.active)  && isFlagshipItem(e) && isUpcoming(e))
+
+    if (flagship?.flyer_image_url)   srcs.push(convertDriveUrl(flagship.flyer_image_url))
+    if (flagshipWF?.flyer_image_url) srcs.push(flagshipWF.flyer_image_url)
+
+    const { events: weekendEvs } = getThisWeekendEvents(evts)
+    weekendEvs.forEach(e => { if (e.flyer_image_url) srcs.push(convertDriveUrl(e.flyer_image_url)) })
+
+    srcs.slice(0, 6).forEach(src => { const img = new Image(); img.src = src })
+  }, [loading]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <BrowserRouter>

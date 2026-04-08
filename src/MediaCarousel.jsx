@@ -30,7 +30,7 @@ function detectType(url) {
 // All children use position:absolute so they fill the track correctly.
 // Images track broken state locally to show a clean placeholder instead of a
 // broken-image box when the src fails to load.
-function CarouselSlide({ rawUrl, type }) {
+function CarouselSlide({ rawUrl, type, isFirst }) {
   const [imgBroken, setImgBroken] = useState(false)
 
   if (type === 'youtube') {
@@ -75,7 +75,7 @@ function CarouselSlide({ rawUrl, type }) {
     <img
       src={url}
       alt=""
-      loading="lazy"
+      loading={isFirst ? 'eager' : 'lazy'}
       className="media-carousel__img"
       onError={() => setImgBroken(true)}
     />
@@ -125,7 +125,7 @@ export default function MediaCarousel({ mediaUrls, mediaTypes }) {
     <div className="media-carousel" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
       <div className={trackClass}>
         {/* key on type+url resets broken-image state when slide changes */}
-        <CarouselSlide rawUrl={activeUrl} type={activeType} key={`${current}-${activeType}`} />
+        <CarouselSlide rawUrl={activeUrl} type={activeType} key={`${current}-${activeType}`} isFirst={current === 0} />
       </div>
 
       {total > 1 && (
