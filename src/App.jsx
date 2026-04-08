@@ -306,22 +306,79 @@ function useKickoffStatus(kickoffDatetime) {
 //   if row.status field exists → only show when status === 'approved' (case-insensitive)
 //   if row has no status field → show as before (legacy rows stay visible)
 
+// ── Sheets cache ─────────────────────────────────────────────────────────────
+// Two-layer cache: module-level in-memory (survives page navigation within the
+// same tab) + sessionStorage (survives hard-reload, same session).
+// TTL: 10 minutes. Stale-while-revalidate: show cached data immediately, then
+// refresh in the background so the UI never blocks on a network call.
+
+const SHEETS_CACHE_KEY = 'ld_sheets_v1'
+const SHEETS_TTL = 10 * 60 * 1000 // 10 minutes
+
+let _memCache = null // { data, ts }
+
+function _readStorage() {
+  try {
+    const raw = sessionStorage.getItem(SHEETS_CACHE_KEY)
+    if (!raw) return null
+    const entry = JSON.parse(raw)
+    return (Date.now() - entry.ts < SHEETS_TTL) ? entry : null
+  } catch { return null }
+}
+
+function _writeCache(data) {
+  const entry = { data, ts: Date.now() }
+  _memCache = entry
+  try { sessionStorage.setItem(SHEETS_CACHE_KEY, JSON.stringify(entry)) } catch {}
+}
+
+function _freshMemCache() {
+  return _memCache && (Date.now() - _memCache.ts < SHEETS_TTL) ? _memCache : null
+}
+
 // ── useSheets hook ──────────────────────────────────────────────────────────
 
 function useSheets() {
-  const [data, setData] = useState({ events: [], venues: [], watchfest: [], barcrawl: [] })
-  const [loading, setLoading] = useState(true)
+  const cached = _freshMemCache() || _readStorage()
+
+  const [data, setData] = useState(
+    cached ? cached.data : { events: [], venues: [], watchfest: [], barcrawl: [] }
+  )
+  const [loading, setLoading] = useState(!cached)
   const [error, setError] = useState(null)
 
   useEffect(() => {
+    // In-memory cache is fresh — skip fetch entirely
+    if (_freshMemCache()) return
+
+    const stored = _readStorage()
+    if (stored) {
+      // Stale-while-revalidate: data already visible, refresh silently in background
+      fetch('/.netlify/functions/sheets')
+        .then(r => r.json())
+        .then(d => {
+          if (!Array.isArray(d.watchfest) || d.watchfest.length === 0) {
+            console.warn('[sheets] watchfest missing or empty in response', d)
+          }
+          const merged = { ...stored.data, ...d }
+          _writeCache(merged)
+          setData(merged)
+        })
+        .catch(() => {}) // keep showing stale data on error
+      return
+    }
+
+    // No cache at all — fetch and show loading
     fetch('/.netlify/functions/sheets')
       .then(r => r.json())
       .then(d => {
         // Merge into defaults so a partial/error response never nukes an array key
-        setData(prev => ({ ...prev, ...d }))
+        const merged = { events: [], venues: [], watchfest: [], barcrawl: [], ...d }
         if (!Array.isArray(d.watchfest) || d.watchfest.length === 0) {
           console.warn('[sheets] watchfest missing or empty in response', d)
         }
+        _writeCache(merged)
+        setData(merged)
         setLoading(false)
       })
       .catch(e => {
@@ -330,7 +387,7 @@ function useSheets() {
         setData(prev => ({ ...prev, venues: FALLBACK_VENUES }))
         setLoading(false)
       })
-  }, [])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   return { data, loading, error }
 }

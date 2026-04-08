@@ -148,7 +148,7 @@ export const handler = async () => {
     statusCode: 200,
     headers: {
       'Content-Type':  'application/json',
-      'Cache-Control': 'public, max-age=300, s-maxage=300',
+      'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=300',
       'Access-Control-Allow-Origin': '*',
     },
     body: JSON.stringify(payload),
