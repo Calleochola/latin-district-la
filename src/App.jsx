@@ -339,7 +339,13 @@ function _freshMemCache() {
 // ── useSheets hook ──────────────────────────────────────────────────────────
 
 function useSheets() {
-  const cached = _freshMemCache() || _readStorage()
+  // Admin cache bypass: ?refresh_cache=SECRET bypasses all browser caches and
+  // passes the token to the Netlify function so it also bypasses the CDN cache.
+  const params        = new URLSearchParams(window.location.search)
+  const refreshSecret = params.get('refresh_cache')
+  const isAdminRefresh = !!refreshSecret
+
+  const cached = isAdminRefresh ? null : (_freshMemCache() || _readStorage())
 
   const [data, setData] = useState(
     cached ? cached.data : { events: [], venues: [], watchfest: [], barcrawl: [] }
@@ -348,13 +354,17 @@ function useSheets() {
   const [error, setError] = useState(null)
 
   useEffect(() => {
-    // In-memory cache is fresh — skip fetch entirely
-    if (_freshMemCache()) return
+    const sheetsUrl = isAdminRefresh
+      ? `/.netlify/functions/sheets?refresh=1&token=${encodeURIComponent(refreshSecret)}`
+      : '/.netlify/functions/sheets'
 
-    const stored = _readStorage()
+    // Normal path: in-memory cache is fresh — skip fetch entirely
+    if (!isAdminRefresh && _freshMemCache()) return
+
+    const stored = !isAdminRefresh && _readStorage()
     if (stored) {
       // Stale-while-revalidate: data already visible, refresh silently in background
-      fetch('/.netlify/functions/sheets')
+      fetch(sheetsUrl)
         .then(r => r.json())
         .then(d => {
           if (!Array.isArray(d.watchfest) || d.watchfest.length === 0) {
@@ -368,8 +378,8 @@ function useSheets() {
       return
     }
 
-    // No cache at all — fetch and show loading
-    fetch('/.netlify/functions/sheets')
+    // No cache (or admin refresh) — fetch fresh and show loading
+    fetch(sheetsUrl)
       .then(r => r.json())
       .then(d => {
         // Merge into defaults so a partial/error response never nukes an array key
@@ -747,7 +757,6 @@ const NAV_LINKS = [
   { to: '/calendar',     label: 'Calendar' },
   { to: '/friday-night', label: 'Friday Night' },
   { to: '/venues',       label: 'Venues' },
-  { to: '/bar-crawl',    label: 'Bar Crawl' },
   { to: '/resources',    label: 'Resources' },
   { to: '/contact',      label: 'Contact' },
 ]
@@ -880,7 +889,6 @@ function HomePage({ data, loading }) {
           <p className="hero__sub">Multiple venues. One district. Los Angeles.</p>
           <div className="hero__buttons">
             <Link to="/events" className="btn btn-red">See This Week →</Link>
-            <Link to="/bar-crawl" className="btn btn-outline-blue">Book Bar Crawl →</Link>
           </div>
         </div>
       </section>
@@ -1113,27 +1121,13 @@ function HomePage({ data, loading }) {
       {/* ── Bar Crawl Band ── */}
       <section className="band band-purple">
         <div className="container" style={{ textAlign: 'center' }}>
-          <div className="section-tag" style={{ color: 'var(--purple)' }}>Friday Nights</div>
+          <div className="section-tag" style={{ color: 'var(--purple)' }}>Coming Soon</div>
           <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: 'clamp(48px, 12vw, 96px)', lineHeight: .95, color: 'var(--cream)', marginBottom: 16 }}>
             BAR<br /><span className="neon-purple" style={{ color: 'var(--purple)' }}>CRAWL</span>
           </h2>
-          <p style={{ fontFamily: 'var(--font-label)', fontSize: 16, color: 'var(--muted)', maxWidth: 520, margin: '0 auto 24px', lineHeight: 1.5 }}>
-            Two guided routes through DTLA's best Latin venues. Wristband perks,
-            drink specials at every stop, and guides who get you home safe.
-            Early Bird $20 · General $25 · Door $30.
+          <p style={{ fontFamily: 'var(--font-label)', fontSize: 16, color: 'var(--muted)', maxWidth: 480, margin: '0 auto', lineHeight: 1.5 }}>
+            A guided crawl through DTLA's best Latin venues — routes, wristband perks, and drink specials. Details dropping soon.
           </p>
-          {/* Route preview pills */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'center', marginBottom: 32 }}>
-            {[
-              { label: 'Route A', stops: 'Toda Madre → Florentín → The Association → Continental Club' },
-              { label: 'Route B', stops: 'The Grayson → La Cita → Continental Club → West Eight' },
-            ].map((r, i) => (
-              <div key={i} style={{ background: 'rgba(213,0,249,.08)', border: '1px solid rgba(213,0,249,.2)', borderRadius: 4, padding: '8px 16px', fontFamily: 'var(--font-label)', fontSize: 12, color: 'var(--cream)', maxWidth: 480, textAlign: 'center' }}>
-                <span style={{ color: 'var(--purple)', fontWeight: 700, marginRight: 8 }}>{r.label}</span>{r.stops}
-              </div>
-            ))}
-          </div>
-          <Link to="/bar-crawl" className="btn btn-purple">See Routes & Get Tickets →</Link>
         </div>
       </section>
 
@@ -1360,7 +1354,6 @@ function FridayNightPage({ data, loading }) {
         </p>
         <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap', position: 'relative', zIndex: 1 }}>
           <Link to="/events" className="btn btn-red">See Events →</Link>
-          <Link to="/bar-crawl" className="btn btn-outline-blue">Book Bar Crawl</Link>
         </div>
       </section>
 
@@ -2767,7 +2760,16 @@ export default function App() {
         <Route path="/venues" element={<VenuesPage data={data} loading={loading} />} />
         <Route path="/friday-night" element={<FridayNightPage data={data} loading={loading} />} />
         <Route path="/watchfest" element={<WatchFestPage data={data} loading={loading} />} />
-        <Route path="/bar-crawl" element={<BarCrawlPage data={data} loading={loading} />} />
+        <Route path="/bar-crawl" element={
+          <div className="page-top" style={{ textAlign: 'center', padding: '120px 24px' }}>
+            <div style={{ fontFamily: 'var(--font-label)', fontSize: 12, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--purple)', marginBottom: 20 }}>Coming Soon</div>
+            <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: 'clamp(48px, 12vw, 96px)', color: 'var(--cream)', lineHeight: 1, marginBottom: 20 }}>BAR CRAWL</h1>
+            <p style={{ fontFamily: 'var(--font-label)', fontSize: 16, color: 'var(--muted)', maxWidth: 420, margin: '0 auto 32px', lineHeight: 1.6 }}>
+              We're finalizing routes, venues, and dates. Check back soon.
+            </p>
+            <Link to="/" className="btn btn-outline-blue">Back to Home</Link>
+          </div>
+        } />
         <Route path="/submit-event" element={<SubmitEventPage />} />
         <Route path="/resources" element={<Resources />} />
         <Route path="/contact" element={<ContactPage />} />

@@ -109,7 +109,14 @@ async function fetchTab(name) {
 // Uses Promise.allSettled so one failing tab never kills the whole payload.
 // Each tab falls back to [] independently; the response is always HTTP 200.
 
-export const handler = async () => {
+export const handler = async (event) => {
+  // Admin cache bypass — validates token against REFRESH_CACHE_SECRET env var.
+  // Usage: /.netlify/functions/sheets?refresh=1&token=SECRET_VALUE
+  const REFRESH_SECRET = process.env.REFRESH_CACHE_SECRET
+  const params         = event.queryStringParameters || {}
+  const isRefresh      = REFRESH_SECRET &&
+                         params.refresh === '1' &&
+                         params.token === REFRESH_SECRET
   const [eventsResult, venuesResult, watchfestResult, barcrawlResult] =
     await Promise.allSettled([
       fetchTab(TABS.events),
@@ -148,7 +155,9 @@ export const handler = async () => {
     statusCode: 200,
     headers: {
       'Content-Type':  'application/json',
-      'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=300',
+      'Cache-Control': isRefresh
+        ? 'no-store'
+        : 'public, s-maxage=3600, stale-while-revalidate=300',
       'Access-Control-Allow-Origin': '*',
     },
     body: JSON.stringify(payload),
