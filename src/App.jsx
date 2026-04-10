@@ -562,9 +562,9 @@ function EventCard({ event }) {
               </span>
             </div>
           )}
-          {/* Venue — secondary, muted */}
+          {/* Venue — secondary but readable */}
           {event.venue && (
-            <div style={{ fontFamily: 'var(--font-label)', fontSize: 12, color: 'var(--muted)', marginBottom: 10, letterSpacing: '.02em' }}>
+            <div style={{ fontFamily: 'var(--font-label)', fontSize: 12, color: '#8E8EAA', marginBottom: 10, letterSpacing: '.02em' }}>
               {event.venue}
             </div>
           )}
