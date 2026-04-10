@@ -1731,6 +1731,95 @@ ul { list-style: none; }
 .content-reveal .event-card:nth-child(5) { animation-delay: .24s; }
 .content-reveal .event-card:nth-child(6) { animation-delay: .29s; }
 
+/* ── Spotlight Card ─────────────────────────────── */
+.spotlight-card {
+  background: #0D0D1F;
+  border: 1px solid rgba(255, 23, 68, 0.3);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 0 28px rgba(255, 23, 68, 0.12), 0 8px 40px rgba(0, 0, 0, 0.5);
+  max-width: 640px;
+  margin: 0 auto;
+  animation: fadeInUp .4s ease-out both;
+  transition: box-shadow .25s ease, transform .25s ease;
+}
+@media (hover: hover) {
+  .spotlight-card:hover {
+    box-shadow: 0 0 52px rgba(255, 23, 68, 0.28), 0 12px 48px rgba(0, 0, 0, 0.6);
+    transform: translateY(-3px);
+  }
+}
+.spotlight-card__image {
+  width: 100%;
+  height: 340px;
+  overflow: hidden;
+  background: #0a0a1a;
+}
+@media (min-width: 480px) {
+  .spotlight-card__image { height: 420px; }
+}
+.spotlight-card__image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+  display: block;
+}
+.spotlight-card__body {
+  padding: 22px 20px 28px;
+}
+.spotlight-card__label {
+  display: inline-block;
+  font-family: var(--font-label);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--red);
+  background: rgba(255, 23, 68, .12);
+  border: 1px solid rgba(255, 23, 68, .3);
+  border-radius: 2px;
+  padding: 4px 10px;
+  margin-bottom: 14px;
+}
+.spotlight-card__title {
+  font-family: var(--font-heading);
+  font-size: clamp(30px, 8vw, 52px);
+  color: var(--cream);
+  line-height: 1;
+  margin-bottom: 12px;
+}
+.spotlight-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  font-family: var(--font-label);
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 14px;
+}
+.spotlight-card__desc {
+  font-family: var(--font-label);
+  font-size: 14px;
+  color: var(--cream);
+  line-height: 1.6;
+  margin-bottom: 20px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.spotlight-card__cta {
+  display: block;
+  width: 100%;
+  text-align: center;
+  font-size: 15px;
+  padding: 14px 20px;
+  border-radius: 24px;
+  letter-spacing: .08em;
+  font-weight: 700;
+}
+
 /* Card entrance + enhanced hover */
 .event-card {
   animation: fadeInUp .35s ease-out both;

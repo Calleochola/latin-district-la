@@ -553,6 +553,54 @@ function EventCard({ event }) {
   )
 }
 
+function SpotlightCard({ event }) {
+  const imgUrl = convertDriveUrl(event.flyer_image_url)
+
+  return (
+    <div className="spotlight-card">
+      {imgUrl && (
+        <div className="spotlight-card__image">
+          <img
+            src={imgUrl}
+            alt={event.event_name}
+            loading="eager"
+            style={{ opacity: 0, transition: 'opacity .35s ease' }}
+            onLoad={e => { e.target.style.opacity = '1' }}
+          />
+        </div>
+      )}
+      <div className="spotlight-card__body">
+        <span className="spotlight-card__label">
+          {event.spotlight_label || 'Spotlight Event'}
+        </span>
+        <h2 className="spotlight-card__title">{event.event_name}</h2>
+        <div className="spotlight-card__meta">
+          {event.venue && <span>📍 {event.venue}</span>}
+          {event.date  && <span>📅 {formatDate(event.date)}{event.time ? ` · ${event.time}` : ''}</span>}
+        </div>
+        {event.description && (
+          <p className="spotlight-card__desc">{event.description}</p>
+        )}
+        {event.ticket_link ? (
+          <a
+            href={event.ticket_link}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn btn-red spotlight-card__cta"
+            onClick={() => trackTicketClick(event, 'nightlife')}
+          >
+            GET TICKETS →
+          </a>
+        ) : (
+          <Link to="/events" className="btn btn-outline-blue spotlight-card__cta">
+            View Details →
+          </Link>
+        )}
+      </div>
+    </div>
+  )
+}
+
 function VenueCard({ venue }) {
   const imgUrl = convertDriveUrl(venue.photo_url || venue.venue_image_url)
   return (
@@ -587,6 +635,11 @@ function VenueCard({ venue }) {
 function isFlagshipItem(item) {
   const f = (item.flagship || '').toLowerCase()
   return f === 'true' || f === 'yes'
+}
+
+function isSpotlightItem(item) {
+  const v = (item.spotlight || '').toLowerCase().trim()
+  return v === 'true' || v === 'yes'
 }
 
 function KickoffStatus({ kickoffDatetime }) {
@@ -843,6 +896,7 @@ function HomePage({ data, loading }) {
   }, [])
 
   const { events: weekendEvents, isWeekend } = getThisWeekendEvents(data.events)
+  const spotlightEvent = data.events.find(e => isActiveItem(e.active) && isSpotlightItem(e) && isUpcoming(e))
   const flagshipEvent = data.events.find(e => isActiveItem(e.active) && isFlagshipItem(e) && isUpcoming(e))
   const flagshipWatchFest = (data.watchfest || []).find(e => isActiveItem(e.active) && isFlagshipItem(e) && isUpcoming(e))
   const venueStrip = (data.venues.length > 0 ? data.venues : FALLBACK_VENUES)
@@ -894,6 +948,20 @@ function HomePage({ data, loading }) {
       </section>
 
       <NeonDivider />
+
+      {/* ── Spotlight Event ── */}
+      {!loading && spotlightEvent && (
+        <>
+          <section className="section">
+            <div className="container">
+              <div className="section-tag" style={{ color: 'var(--red)' }}>Don't Miss This</div>
+              <NeonDivider />
+              <SpotlightCard event={spotlightEvent} />
+            </div>
+          </section>
+          <NeonDivider />
+        </>
+      )}
 
       {/* ── Flagship Hero Event ── */}
       {!loading && flagshipEvent && (
