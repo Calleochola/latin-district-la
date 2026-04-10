@@ -150,6 +150,26 @@ function formatDate(str) {
   } catch { return str }
 }
 
+// Short date without weekday: "Apr 3"
+function formatDateShort(str) {
+  if (!str) return ''
+  try {
+    const d = parseEventDate(str)
+    if (!d || isNaN(d.getTime())) return str
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  } catch { return str }
+}
+
+// 3-letter uppercase day: "FRI", "SAT", "SUN"
+function getDayOfWeek(str) {
+  if (!str) return ''
+  try {
+    const d = parseEventDate(str)
+    if (!d || isNaN(d.getTime())) return ''
+    return d.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase()
+  } catch { return '' }
+}
+
 // Encode form data for Netlify Forms (application/x-www-form-urlencoded)
 function encode(data) {
   return Object.keys(data)
@@ -528,8 +548,26 @@ function EventCard({ event }) {
           </div>
         )}
         <div className="event-card__body">
-          <div style={{ fontFamily: 'var(--font-heading)', fontSize: 'clamp(15px, 4vw, 20px)', color: '#fff', fontWeight: 700, marginBottom: 6, lineHeight: 1.15 }}>{event.event_name}</div>
-          <div style={{ fontFamily: 'var(--font-label)', fontSize: 13, color: '#9090C0', marginBottom: 10, letterSpacing: '.02em' }}>{event.venue} · {formatDate(event.date)}{event.time ? ` · ${event.time}` : ''}</div>
+          <div style={{ fontFamily: 'var(--font-heading)', fontSize: 'clamp(15px, 4vw, 20px)', color: '#fff', fontWeight: 700, marginBottom: 8, lineHeight: 1.15 }}>{event.event_name}</div>
+          {/* Date row: day pill + short date + time */}
+          {event.date && (
+            <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '4px 6px', marginBottom: 5 }}>
+              {getDayOfWeek(event.date) && (
+                <span style={{ fontFamily: 'var(--font-label)', fontSize: 10, fontWeight: 700, letterSpacing: '.1em', background: 'rgba(255,23,68,.12)', color: '#FF7090', border: '1px solid rgba(255,23,68,.25)', borderRadius: 3, padding: '2px 7px', flexShrink: 0 }}>
+                  {getDayOfWeek(event.date)}
+                </span>
+              )}
+              <span style={{ fontFamily: 'var(--font-label)', fontSize: 13, color: 'var(--cream)', letterSpacing: '.02em' }}>
+                {formatDateShort(event.date)}{event.time ? ` · ${event.time}` : ''}
+              </span>
+            </div>
+          )}
+          {/* Venue — secondary, muted */}
+          {event.venue && (
+            <div style={{ fontFamily: 'var(--font-label)', fontSize: 12, color: 'var(--muted)', marginBottom: 10, letterSpacing: '.02em' }}>
+              {event.venue}
+            </div>
+          )}
           <span className="event-card__badge" style={{ background: badge.bg, color: badge.color }}>{badge.label}</span>
           {event.ticket_link && (
             <a
