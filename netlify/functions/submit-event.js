@@ -1,9 +1,20 @@
 // netlify/functions/submit-event.js
 // Receives event submission from the front-end form, then forwards the payload
-// to a Google Apps Script Web App which appends a row to the Events sheet.
+// to the Google Apps Script Web App which uploads the flyer to Drive and
+// appends a row to the Events sheet.
 //
 // Required Netlify env var (Netlify dashboard → Site settings → Environment variables):
 //   APPS_SCRIPT_URL  — The deployed Apps Script /exec URL
+//
+// ── Flyer upload architecture ─────────────────────────────────────────────────
+// The front-end converts the selected file to base64 (FileReader) and includes
+// it in this request body as flyer_base64 / flyer_mime_type / flyer_filename.
+// This function validates those fields and forwards them to Apps Script.
+// Apps Script decodes the file, uploads it to Google Drive via DriveApp,
+// sets the file to public, and uses the resulting URL + file ID in the row write.
+// If the Drive upload fails, Apps Script returns an error and no row is written.
+//
+// File size limit: 4 MB decoded → ~5.3 MB base64 → safely under Netlify's 6 MB body limit.
 //
 // ── WHY redirect: 'manual' ────────────────────────────────────────────────────
 // Google Apps Script /exec URLs respond with a 302 redirect to
@@ -14,18 +25,16 @@
 // Fix: use redirect:'manual', detect the 3xx, and re-POST to the Location URL.
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// Events sheet column schema (exact order — must match Apps Script appendRow):
-//   event_name, venue, date, time, genre, event_type, ticket_link,
-//   flyer_image_url, featured, active, tailgate_time, status,
-//   venue_image_url, video_url, crowd_level, description
-//
 // Moderation defaults (enforced server-side, never overridable by submitter):
-//   featured = FALSE  |  active = FALSE  |  status = pending
+//   featured = FALSE  |  active = FALSE  |  status = submitted
 //   tailgate_time = ""  |  venue_image_url = ""  |  video_url = ""  |  crowd_level = ""
 //
 // TODO: Add duplicate event detection by event_name + venue + date
 // TODO: Add approved venue whitelist validation
 // TODO: Add submitted_by_email / submitted_at tracking columns
+
+const ALLOWED_MIME = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif'])
+const MAX_BASE64_CHARS = Math.ceil(4 * 1024 * 1024 * 1.4) // 4 MB decoded + base64 overhead
 
 export const handler = async (event) => {
   // ── Method guard ──────────────────────────────────────────────────────────
@@ -61,9 +70,33 @@ export const handler = async (event) => {
     }
   }
 
-  // ── Enforce moderation defaults ───────────────────────────────────────────
-  // These values are always overwritten server-side regardless of what the
-  // front-end sends. Admin sets featured/active/status in the sheet directly.
+  // ── Validate flyer fields ─────────────────────────────────────────────────
+  if (!payload.flyer_base64 || typeof payload.flyer_base64 !== 'string') {
+    return {
+      statusCode: 400,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ error: 'Flyer file data is required.' }),
+    }
+  }
+  if (!ALLOWED_MIME.has(payload.flyer_mime_type)) {
+    return {
+      statusCode: 400,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ error: `File type not allowed: ${payload.flyer_mime_type}. Use JPG, PNG, or WEBP.` }),
+    }
+  }
+  if (payload.flyer_base64.length > MAX_BASE64_CHARS) {
+    return {
+      statusCode: 400,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ error: 'Flyer file too large. Maximum is 4 MB.' }),
+    }
+  }
+
+  // ── Build safe payload ────────────────────────────────────────────────────
+  // Moderation defaults are always overwritten server-side.
+  // flyer_base64 / flyer_mime_type / flyer_filename are forwarded to Apps Script
+  // which performs the Drive upload and derives flyer_image_url + flyer_file_id.
   const safePayload = {
     event_name:      String(payload.event_name      || '').trim(),
     venue:           String(payload.venue            || '').trim(),
@@ -72,7 +105,12 @@ export const handler = async (event) => {
     genre:           String(payload.genre            || '').trim(),
     event_type:      String(payload.event_type       || '').trim(),
     ticket_link:     String(payload.ticket_link      || '').trim(),
-    flyer_image_url: String(payload.flyer_image_url  || '').trim(),
+    description:     String(payload.description      || '').trim(),
+    // Flyer — Apps Script uploads these and derives the URL + file ID
+    flyer_base64:    payload.flyer_base64,
+    flyer_mime_type: String(payload.flyer_mime_type  || '').trim(),
+    flyer_filename:  String(payload.flyer_filename   || 'flyer.jpg').trim(),
+    // Moderation defaults — enforced here, re-enforced in Apps Script
     featured:        'FALSE',
     active:          'FALSE',
     tailgate_time:   '',
@@ -80,12 +118,11 @@ export const handler = async (event) => {
     venue_image_url: '',
     video_url:       '',
     crowd_level:     '',
-    description:     String(payload.description      || '').trim(),
   }
 
   // ── Required field guard ──────────────────────────────────────────────────
-  // genre and ticket_link are optional — excluded from this check (matches Apps Script)
-  const required = ['event_name', 'venue', 'date', 'time', 'event_type', 'flyer_image_url', 'description']
+  // genre and ticket_link are optional. flyer fields are validated above.
+  const required = ['event_name', 'venue', 'date', 'time', 'event_type', 'description']
   const missing = required.filter(k => !safePayload[k])
   if (missing.length) {
     console.error('[submit-event] Missing required fields:', missing)
@@ -97,12 +134,13 @@ export const handler = async (event) => {
   }
 
   // ── POST to Apps Script (redirect-safe) ───────────────────────────────────
-  const fetchBody = JSON.stringify(safePayload)
+  const fetchBody    = JSON.stringify(safePayload)
   const fetchHeaders = { 'Content-Type': 'application/json' }
 
   const urlHost = (() => { try { return new URL(appsScriptUrl).hostname } catch { return 'unknown' } })()
   console.log('[submit-event] Target host:', urlHost)
 
+  let responseText
   try {
     // Step 1: POST with redirect:manual so we control redirect handling
     let res = await fetch(appsScriptUrl, {
@@ -128,13 +166,13 @@ export const handler = async (event) => {
     }
 
     // Step 3: Read and validate the Apps Script response body
-    const responseText = await res.text()
+    responseText = await res.text()
     console.log('[submit-event] Apps Script response status:', res.status, '| body:', responseText.substring(0, 300))
 
     // Only treat a genuine server error (5xx) as failure.
     // Apps Script /exec can return 405 after the redirect chain even when it
-    // already ran, wrote the row, and sent the email — throwing on !res.ok
-    // causes a false failure identical to the contact form bug.
+    // already ran, uploaded the file, wrote the row, and sent the email — throwing
+    // on !res.ok causes a false failure.
     if (res.status >= 500) {
       throw new Error(`Apps Script returned ${res.status}: ${responseText.substring(0, 200)}`)
     }
@@ -148,7 +186,7 @@ export const handler = async (event) => {
       throw new Error(`Apps Script reported failure: ${msg}`)
     }
 
-    console.log('[submit-event] Success — row written to sheet')
+    console.log('[submit-event] Success — flyer uploaded and row written')
     return {
       statusCode: 200,
       headers: { 'Content-Type': 'application/json' },

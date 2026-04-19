@@ -108,9 +108,11 @@ function isActiveItem(active) {
   return true
 }
 
-// Returns true if the event is in the future (or if date is unparseable — fail-safe).
-// For WatchFest items, prefers kickoff_datetime; falls back to date + time.
-// If time is missing, treats end-of-day as the cutoff.
+// Returns true if the event is still visible (or if date is unparseable — fail-safe).
+// For WatchFest items, prefers kickoff_datetime; falls back to date-based rule.
+// For all other events: keep visible until end of the day AFTER the event date.
+//   e.g. event on May 5 → visible all day May 6, hidden starting May 7
+// Do NOT apply the +1 day extension to WatchFest (kickoff_datetime path is unchanged).
 function isUpcoming(item) {
   try {
     if (item.kickoff_datetime) {
@@ -120,21 +122,9 @@ function isUpcoming(item) {
     if (!item.date) return true
     const d = parseEventDate(item.date)
     if (!d) return true
-    if (item.time) {
-      const m = item.time.match(/(\d+):(\d+)\s*(am|pm)?/i)
-      if (m) {
-        let h = parseInt(m[1])
-        const min = parseInt(m[2])
-        const ap = (m[3] || '').toLowerCase()
-        if (ap === 'pm' && h !== 12) h += 12
-        if (ap === 'am' && h === 12) h = 0
-        d.setHours(h, min, 59, 999)
-      } else {
-        d.setHours(23, 59, 59, 999)
-      }
-    } else {
-      d.setHours(23, 59, 59, 999)
-    }
+    // Advance to end of the next day so events stay visible through the day after
+    d.setDate(d.getDate() + 1)
+    d.setHours(23, 59, 59, 999)
     return d.getTime() > Date.now()
   } catch {
     return true
@@ -2046,333 +2036,40 @@ function BarCrawlPage({ data, loading }) {
 
 // ── SUBMIT EVENT PAGE ───────────────────────────────────────────────────────
 
-// ── Cloudinary upload helper ─────────────────────────────────────────────────
-// Uploads a file directly to Cloudinary using an unsigned upload preset.
-// Returns a stable hosted URL (secure_url).
+// ── Flyer → base64 helper ────────────────────────────────────────────────────
+// Reads the selected file as a base64 string using FileReader.
+// The base64 is included in the form payload and forwarded by submit-event.js
+// to Apps Script, which performs the actual Google Drive upload via DriveApp.
+// No separate upload step — the whole submission (file + form data) is one POST.
 //
-// Required env vars (set in .env.local and Netlify site settings):
-//   VITE_CLOUDINARY_CLOUD_NAME    — your Cloudinary cloud name
-//   VITE_CLOUDINARY_UPLOAD_PRESET — an unsigned upload preset (Cloudinary dashboard)
-//
-// Future: call this same function for venue_image_url when that upload is added.
-async function uploadToCloudinary(file) {
-  const cloudName    = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME
-  const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET
-  if (!cloudName || !uploadPreset) throw new Error('Cloudinary is not configured')
-
-  const fd = new FormData()
-  fd.append('file', file)
-  fd.append('upload_preset', uploadPreset)
-
-  const res = await fetch(
-    `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
-    { method: 'POST', body: fd }
-  )
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}))
-    throw new Error(err.error?.message || 'Image upload failed')
-  }
-  const data = await res.json()
-  return data.secure_url
-}
-
+// Allowed types: JPG, PNG, WEBP (HEIC blocked — browsers cannot render it).
+// Max size: 4 MB (base64 overhead keeps the payload under Netlify's 6 MB body limit).
 function SubmitEventPage() {
-  const navigate = useNavigate()
-  const [form, setForm] = useState({
-    event_name:  '',
-    venue:       '',
-    date:        '',
-    time:        '',
-    genre:       '',
-    event_type:  '',
-    ticket_link: '',
-    description: '',
-  })
-  const [flyerFile,    setFlyerFile]    = useState(null)
-  const [flyerPreview, setFlyerPreview] = useState(null)
-  const [submitting,   setSubmitting]   = useState(false)
-  const [uploadError,  setUploadError]  = useState(null)
-  const [formError,    setFormError]    = useState(null)
-
-  const set = (key) => (e) => setForm(prev => ({ ...prev, [key]: e.target.value }))
-
-  const handleFlyerChange = (e) => {
-    const file = e.target.files[0]
-    if (!file) return
-    setFlyerFile(file)
-    setFlyerPreview(URL.createObjectURL(file))
-    setUploadError(null)
-  }
-
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-    setFormError(null)
-    setUploadError(null)
-
-    // ── Client-side validation ───────────────────────────────────────────────
-    if (!flyerFile) {
-      setUploadError('Please upload a flyer image before submitting.')
-      return
-    }
-    if (form.ticket_link && !/^https?:\/\//.test(form.ticket_link)) {
-      setFormError('Ticket link must start with http:// or https://')
-      return
-    }
-
-    setSubmitting(true)
-    try {
-      // 1. Upload flyer → Cloudinary → stable public URL
-      let flyer_image_url = ''
-      try {
-        flyer_image_url = await uploadToCloudinary(flyerFile)
-      } catch {
-        setUploadError('Image upload failed. Please try again.')
-        setSubmitting(false)
-        return
-      }
-
-      // 2. Build payload matching Events sheet schema exactly.
-      //    All moderation defaults are enforced here and re-enforced server-side.
-      //
-      //    Moderation review workflow:
-      //      submitted = written to Events, not live (default for all new submissions)
-      //      approved  = admin-approved, visible on site when active = TRUE
-      //      rejected  = hidden
-      //      active    = TRUE required to display (admin sets after approval)
-      //
-      //    TODO: add duplicate check (event_name + venue + date) before submitting
-      //    TODO: validate venue against approved venue whitelist when available
-      //    TODO: capture submitted_by_email / submitted_at for admin tracking
-      const payload = {
-        event_name:      form.event_name.trim(),
-        venue:           form.venue.trim(),
-        date:            form.date,
-        time:            form.time,
-        genre:           form.genre,
-        event_type:      form.event_type,
-        ticket_link:     form.ticket_link.trim(),
-        flyer_image_url,
-        // Moderation defaults — overwritten server-side, never overridable by submitter
-        featured:        'FALSE',
-        active:          'FALSE',
-        tailgate_time:   '',
-        status:          'submitted',
-        venue_image_url: '',  // Future: add venue image upload (same Cloudinary flow)
-        video_url:       '',
-        crowd_level:     '',
-        description:     form.description.trim(),
-      }
-
-      // 3. POST to Netlify function → forwarded to Apps Script → written to sheet
-      const res = await fetch('/.netlify/functions/submit-event', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      })
-      const resBody = await res.json().catch(() => ({}))
-      // Catch all non-2xx — includes 500 from missing APPS_SCRIPT_URL env var,
-      // which previously fell through and showed a false success screen.
-      if (!res.ok) {
-        throw new Error(resBody.error || 'Submission failed. Please try again.')
-      }
-
-      trackEventSubmit(form.event_name)
-      navigate('/?success=event', { replace: true })
-    } catch (err) {
-      setFormError(err.message || 'Submission failed. Please try again.')
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
   return (
     <div className="page-top">
       <section className="section">
         <div className="container">
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 48 }}>
-
-            {/* Info aside */}
-            <div>
-              <div className="section-tag">For Promoters &amp; Organizers</div>
-              <h1 className="section-heading neon-blue mb-16">SUBMIT YOUR EVENT</h1>
-              <p style={{ fontFamily: 'var(--font-body)', fontSize: 15, color: 'var(--muted)', marginBottom: 24, lineHeight: 1.6 }}>
-                Get your Latin music event in front of thousands of DTLA nightlife attendees.
-                All genres welcome — not just Friday Night Latin District.
-                Submit below and our team will review within 48 hours.
-              </p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                {[
-                  { icon: '📣', title: 'Reach The District', desc: 'Your event seen by our full Friday night audience.' },
-                  { icon: '🎟️', title: 'Drive Ticket Sales', desc: 'Direct ticket link on every event card.' },
-                  { icon: '📱', title: 'Social Amplification', desc: 'Featured events shared to our Instagram & TikTok.' },
-                  { icon: '📅', title: 'Calendar Listing', desc: 'Your event appears on our public events calendar.' },
-                ].map((b, i) => (
-                  <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-                    <span style={{ fontSize: 24, flexShrink: 0 }}>{b.icon}</span>
-                    <div>
-                      <div style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: 15, marginBottom: 2 }}>{b.title}</div>
-                      <div style={{ fontSize: 13, color: 'var(--muted)' }}>{b.desc}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Form */}
-            <form onSubmit={handleSubmit}>
-
-              {/* Event Name */}
-              <div className="form-group">
-                <label className="form-label">Event Name *</label>
-                <input
-                  required
-                  className="form-input"
-                  value={form.event_name}
-                  onChange={set('event_name')}
-                  placeholder="e.g. Reggaeton Fridays"
-                />
-              </div>
-
-              {/* Venue Name */}
-              <div className="form-group">
-                <label className="form-label">Venue Name *</label>
-                <input
-                  required
-                  className="form-input"
-                  value={form.venue}
-                  onChange={set('venue')}
-                  placeholder="e.g. Rhythm Room LA"
-                />
-              </div>
-
-              {/* Date + Time */}
-              <div className="form-grid-2col">
-                <div className="form-group">
-                  <label className="form-label">Event Date *</label>
-                  <input required type="date" className="form-input" value={form.date} onChange={set('date')} />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Start Time *</label>
-                  <input required type="time" className="form-input" value={form.time} onChange={set('time')} />
-                </div>
-              </div>
-
-              {/* Genre + Event Type */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 20px' }}>
-                <div className="form-group">
-                  <label className="form-label">Genre <span style={{ color: 'var(--muted)', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(optional)</span></label>
-                  <select className="form-select" value={form.genre} onChange={set('genre')}>
-                    <option value="">Select genre…</option>
-                    {GENRE_OPTIONS.map(g => <option key={g} value={g}>{g}</option>)}
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Event Type *</label>
-                  <select required className="form-select" value={form.event_type} onChange={set('event_type')}>
-                    <option value="">Select type…</option>
-                    {EVENT_TYPE_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
-                  </select>
-                </div>
-              </div>
-
-              {/* Ticket Link (optional) */}
-              <div className="form-group">
-                <label className="form-label">
-                  Ticket Link <span style={{ color: 'var(--muted)', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(optional)</span>
-                </label>
-                <input
-                  type="url"
-                  className="form-input"
-                  value={form.ticket_link}
-                  onChange={set('ticket_link')}
-                  placeholder="https://..."
-                />
-              </div>
-
-              {/* Flyer Upload → Cloudinary */}
-              <div className="form-group">
-                <label className="form-label">Event Flyer *</label>
-                <label style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 12,
-                  border: `2px dashed ${flyerFile ? 'var(--blue)' : 'rgba(255,255,255,.18)'}`,
-                  borderRadius: 4,
-                  padding: '28px 20px',
-                  cursor: 'pointer',
-                  background: flyerFile ? 'rgba(0,229,255,.04)' : 'rgba(255,255,255,.02)',
-                  transition: 'border-color .2s, background .2s',
-                  position: 'relative',
-                }}>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer', width: '100%', height: '100%' }}
-                    onChange={handleFlyerChange}
-                  />
-                  {flyerPreview ? (
-                    <div style={{ textAlign: 'center' }}>
-                      <img
-                        src={flyerPreview}
-                        alt="Flyer preview"
-                        style={{ maxHeight: 160, maxWidth: '100%', objectFit: 'contain', borderRadius: 3, marginBottom: 8, display: 'block', margin: '0 auto 8px' }}
-                      />
-                      <div style={{ fontFamily: 'var(--font-label)', fontSize: 12, color: 'var(--blue)' }}>
-                        {flyerFile.name} · Click to change
-                      </div>
-                    </div>
-                  ) : (
-                    <>
-                      <div style={{ fontSize: 36 }}>🖼️</div>
-                      <div style={{ fontFamily: 'var(--font-label)', fontSize: 13, color: 'var(--muted)', textAlign: 'center' }}>
-                        Click to upload flyer<br />
-                        <span style={{ fontSize: 11, opacity: .7 }}>JPG, PNG, WEBP · max 10 MB</span>
-                      </div>
-                    </>
-                  )}
-                </label>
-                {uploadError && (
-                  <div style={{ fontFamily: 'var(--font-label)', fontSize: 13, color: 'var(--red)', marginTop: 8, padding: '10px 14px', background: 'rgba(255,23,68,.08)', border: '1px solid rgba(255,23,68,.2)', borderRadius: 3 }}>
-                    {uploadError}
-                  </div>
-                )}
-              </div>
-
-              {/* Description */}
-              <div className="form-group">
-                <label className="form-label">Event Description *</label>
-                <textarea
-                  required
-                  className="form-textarea"
-                  value={form.description}
-                  onChange={set('description')}
-                  placeholder="Tell us about your event — vibe, lineup, what to expect…"
-                  rows={4}
-                />
-              </div>
-
-              {formError && (
-                <div style={{ fontFamily: 'var(--font-label)', fontSize: 13, color: 'var(--red)', marginBottom: 12, padding: '12px 16px', background: 'rgba(255,23,68,.08)', border: '1px solid rgba(255,23,68,.2)', borderRadius: 3 }}>
-                  {formError}
-                </div>
-              )}
-
-              <button
-                type="submit"
-                className="btn btn-blue w-full"
-                disabled={submitting}
-                style={{ marginTop: 8, opacity: submitting ? .6 : 1 }}
-              >
-                {submitting ? 'Submitting…' : 'Submit Event →'}
-              </button>
-
-              <p style={{ fontFamily: 'var(--font-label)', fontSize: 11, color: 'var(--muted)', textAlign: 'center', marginTop: 12, lineHeight: 1.5 }}>
-                Events are reviewed before going live. Your submission will appear as pending until approved by our team.
-              </p>
-            </form>
-          </div>
+          <div className="section-tag">For Promoters &amp; Organizers</div>
+          <h1 className="section-heading neon-blue mb-16">SUBMIT YOUR EVENT</h1>
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: 15, color: 'var(--muted)', marginBottom: 8, lineHeight: 1.6 }}>
+            Get your Latin music event in front of thousands of DTLA nightlife attendees.
+            All genres welcome. Submit below and our team will review within 48 hours.
+          </p>
+          <p style={{ fontFamily: 'var(--font-label)', fontSize: 12, color: 'var(--muted)', marginBottom: 24, opacity: 0.7 }}>
+            A Google account is required to upload a flyer.
+          </p>
+          <iframe
+            src="https://docs.google.com/forms/d/e/1FAIpQLSePzeMZBlBGxD6zC9pY79Kort3cnUcssveQKKrzpt-fCztAZQ/viewform?embedded=true"
+            width="100%"
+            height="1400"
+            frameBorder="0"
+            marginHeight="0"
+            marginWidth="0"
+            title="Event Submission Form"
+            style={{ border: 'none', display: 'block' }}
+          >
+            Loading form...
+          </iframe>
         </div>
       </section>
     </div>
