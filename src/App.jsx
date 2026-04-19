@@ -2044,40 +2044,59 @@ function BarCrawlPage({ data, loading }) {
 //
 // Allowed types: JPG, PNG, WEBP (HEIC blocked — browsers cannot render it).
 // Max size: 4 MB (base64 overhead keeps the payload under Netlify's 6 MB body limit).
-const FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSePzeMZBlBGxD6zC9pY79Kort3cnUcssveQKKrzpt-fCztAZQ/viewform?embedded=true'
+const FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSePzeMZBlBGxD6zC9pY79Kort3cnUcssveQKKrzpt-fCztAZQ/viewform'
+
+const SUBMIT_STEPS = [
+  { num: '01', label: 'Fill out the form', body: 'Enter your event details and upload a flyer. A Google account is required for the file upload.' },
+  { num: '02', label: 'We review it', body: 'Our team checks your submission and approves it within 48 hours.' },
+  { num: '03', label: 'Your event goes live', body: 'Once approved your event appears on the site automatically — no follow-up needed.' },
+]
 
 function SubmitEventPage() {
-  const [open, setOpen] = useState(false)
-
-  // Lock body scroll while modal is open
-  useEffect(() => {
-    if (open) {
-      document.body.style.overflow = 'hidden'
-    } else {
-      document.body.style.overflow = ''
-    }
-    return () => { document.body.style.overflow = '' }
-  }, [open])
-
   return (
     <div className="page-top">
       <section className="section">
         <div className="container" style={{ textAlign: 'center' }}>
           <div className="section-tag">For Promoters &amp; Organizers</div>
           <h1 className="section-heading neon-blue mb-16">SUBMIT YOUR EVENT</h1>
-          <p style={{ fontFamily: 'var(--font-body)', fontSize: 15, color: 'var(--muted)', marginBottom: 8, lineHeight: 1.6, maxWidth: 560, margin: '0 auto 8px' }}>
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: 15, color: 'var(--muted)', lineHeight: 1.7, maxWidth: 520, margin: '0 auto 48px' }}>
             Get your Latin music event in front of thousands of DTLA nightlife attendees.
-            All genres welcome. Submit below and our team will review within 48 hours.
-          </p>
-          <p style={{ fontFamily: 'var(--font-label)', fontSize: 12, color: 'var(--muted)', marginBottom: 40, opacity: 0.7 }}>
-            A Google account is required to upload a flyer.
+            All genres welcome.
           </p>
 
-          <button
-            onClick={() => setOpen(true)}
+          {/* Steps */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, justifyContent: 'center', marginBottom: 48 }}>
+            {SUBMIT_STEPS.map(s => (
+              <div key={s.num} style={{
+                flex: '1 1 220px',
+                maxWidth: 260,
+                background: 'var(--card-bg)',
+                border: '1px solid rgba(0,229,255,.14)',
+                borderRadius: 12,
+                padding: '24px 20px',
+                textAlign: 'left',
+              }}>
+                <div style={{ fontFamily: 'var(--font-label)', fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', color: 'var(--blue)', marginBottom: 10 }}>
+                  {s.num}
+                </div>
+                <div style={{ fontFamily: 'var(--font-label)', fontSize: 13, fontWeight: 700, color: '#fff', marginBottom: 8 }}>
+                  {s.label}
+                </div>
+                <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--muted)', lineHeight: 1.6 }}>
+                  {s.body}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* CTA */}
+          <a
+            href={FORM_URL}
+            target="_blank"
+            rel="noopener noreferrer"
             style={{
               display: 'inline-block',
-              padding: '14px 36px',
+              padding: '14px 40px',
               background: 'var(--blue)',
               color: '#000',
               fontFamily: 'var(--font-label)',
@@ -2085,109 +2104,18 @@ function SubmitEventPage() {
               fontWeight: 700,
               letterSpacing: '0.12em',
               textTransform: 'uppercase',
-              border: 'none',
+              textDecoration: 'none',
               borderRadius: 8,
-              cursor: 'pointer',
-              boxShadow: '0 0 24px rgba(0,229,255,.35)',
-              transition: 'opacity .15s',
+              boxShadow: '0 0 28px rgba(0,229,255,.35)',
             }}
-            onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
-            onMouseLeave={e => e.currentTarget.style.opacity = '1'}
           >
-            Submit Your Event
-          </button>
+            Open Submission Form
+          </a>
+          <p style={{ fontFamily: 'var(--font-label)', fontSize: 11, color: 'var(--muted)', marginTop: 14, opacity: 0.6 }}>
+            Opens in a new tab &mdash; sign in with Google to upload your flyer
+          </p>
         </div>
       </section>
-
-      {/* Modal overlay */}
-      {open && (
-        <div
-          onClick={e => { if (e.target === e.currentTarget) setOpen(false) }}
-          style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 1000,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            background: 'rgba(0,0,0,.75)',
-            backdropFilter: 'blur(6px)',
-            WebkitBackdropFilter: 'blur(6px)',
-            padding: '16px',
-          }}
-        >
-          <div style={{
-            position: 'relative',
-            width: '90%',
-            maxWidth: 800,
-            maxHeight: '90vh',
-            display: 'flex',
-            flexDirection: 'column',
-            borderRadius: 16,
-            overflow: 'hidden',
-            background: 'var(--card-bg)',
-            border: '1px solid rgba(0,229,255,.18)',
-            boxShadow: '0 0 60px rgba(0,229,255,.12), 0 16px 48px rgba(0,0,0,.7)',
-          }}>
-            {/* Modal header */}
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '16px 20px',
-              borderBottom: '1px solid rgba(0,229,255,.1)',
-              flexShrink: 0,
-            }}>
-              <p style={{
-                fontFamily: 'var(--font-label)',
-                fontSize: 11,
-                fontWeight: 700,
-                letterSpacing: '0.1em',
-                textTransform: 'uppercase',
-                color: 'var(--blue)',
-                margin: 0,
-              }}>
-                Submit your event
-              </p>
-              <button
-                onClick={() => setOpen(false)}
-                aria-label="Close form"
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: 'var(--muted)',
-                  cursor: 'pointer',
-                  fontSize: 22,
-                  lineHeight: 1,
-                  padding: '2px 6px',
-                  borderRadius: 4,
-                  transition: 'color .15s',
-                }}
-                onMouseEnter={e => e.currentTarget.style.color = '#fff'}
-                onMouseLeave={e => e.currentTarget.style.color = 'var(--muted)'}
-              >
-                ✕
-              </button>
-            </div>
-
-            {/* Scrollable iframe area */}
-            <div style={{ overflowY: 'auto', flex: 1, padding: '16px' }}>
-              <iframe
-                src={FORM_URL}
-                width="100%"
-                height="1100"
-                frameBorder="0"
-                marginHeight="0"
-                marginWidth="0"
-                title="Event Submission Form"
-                style={{ border: 'none', display: 'block', borderRadius: 8 }}
-              >
-                Loading form...
-              </iframe>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
