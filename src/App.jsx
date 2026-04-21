@@ -1046,7 +1046,7 @@ function HomePage({ data, loading }) {
           <section className="section" style={{ background: 'linear-gradient(135deg, rgba(255,179,0,.05), rgba(0,0,0,0))' }}>
             <div className="container">
               <span style={{ fontFamily: 'var(--font-label)', fontSize: 11, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--gold)', background: 'rgba(255,179,0,.12)', border: '1px solid rgba(255,179,0,.3)', borderRadius: 2, padding: '4px 10px', display: 'inline-block', marginBottom: 16 }}>
-                ⚽ {getWatchfestCategory(flagshipWatchFest) === 'dodgers' ? 'Dodger Fest' : 'Goal City'} — Watch Fest
+                ⚽ Goal City — Watch Fest
               </span>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 28, alignItems: 'center' }}>
                 {flagshipWatchFest.flyer_image_url && (
@@ -1552,25 +1552,19 @@ function FridayNightPage({ data, loading }) {
 // ── WATCH FEST PAGE ─────────────────────────────────────────────────────────
 
 function WatchFestPage({ data, loading }) {
-  const [activeTab, setActiveTab] = useState('all')
-  const allEvents = Array.isArray(data.watchfest) ? data.watchfest.filter(item => {
+  const activeEvents = Array.isArray(data.watchfest) ? data.watchfest.filter(item => {
     if (!isActiveItem(item.active)) return false
     const status = (item.status || '').toLowerCase()
     if (status === 'cancelled' || status === 'rejected') return false
+    if (getWatchfestCategory(item) === 'dodgers') return false
     if (!isUpcoming(item)) return false
     return true
   }) : []
-  const worldCupEvents = allEvents.filter(item => getWatchfestCategory(item) === 'worldcup')
-  const dodgerEvents = allEvents.filter(item => getWatchfestCategory(item) === 'dodgers')
-  const activeEvents = activeTab === 'all' ? allEvents : activeTab === 'worldcup' ? worldCupEvents : dodgerEvents
   const flagship = activeEvents.find(isFlagshipItem)
 
   const nextEvent = useMemo(() =>
     activeEvents
-      .filter(e => {
-        const d = new Date(e.kickoff_datetime || e.date)
-        return !isNaN(d) && d > Date.now()
-      })
+      .filter(e => { const d = new Date(e.kickoff_datetime || e.date); return !isNaN(d) && d > Date.now() })
       .sort((a, b) => new Date(a.kickoff_datetime || a.date) - new Date(b.kickoff_datetime || b.date))[0]
   , [activeEvents])
   const pageStatus = useKickoffStatus(nextEvent?.kickoff_datetime || nextEvent?.date)
@@ -1583,21 +1577,9 @@ function WatchFestPage({ data, loading }) {
           <div style={{ color: 'var(--cream)' }}>WATCH</div>
           <div className="neon-gold" style={{ color: 'var(--gold)' }}>FEST</div>
         </div>
-        <p style={{ fontFamily: 'var(--font-label)', fontSize: 16, color: 'var(--muted)', maxWidth: 620, margin: '20px auto 20px', lineHeight: 1.5, position: 'relative', zIndex: 1 }}>
-          Watch Fest is the umbrella for Latin District LA sports programming — with <strong style={{ color: 'var(--cream)' }}>Goal City</strong> for World Cup watch parties and <strong style={{ color: 'var(--cream)' }}>Dodger Fest</strong> for baseball nights across the district.
+        <p style={{ fontFamily: 'var(--font-label)', fontSize: 16, color: 'var(--muted)', maxWidth: 620, margin: '20px auto 0', lineHeight: 1.5, position: 'relative', zIndex: 1 }}>
+          Goal City is Latin District LA's World Cup watch party series — big screens, live music, vendors, and the energy of DTLA all in one place.
         </p>
-
-        <div style={{ display: 'flex', justifyContent: 'center', gap: 12, flexWrap: 'wrap', position: 'relative', zIndex: 1 }}>
-          <button className={`btn ${activeTab === 'all' ? 'btn-gold' : 'btn-outline-blue'}`} onClick={() => setActiveTab('all')}>
-            All
-          </button>
-          <button className={`btn ${activeTab === 'dodgers' ? 'btn-gold' : 'btn-outline-blue'}`} onClick={() => setActiveTab('dodgers')}>
-            Dodger Games
-          </button>
-          <button className={`btn ${activeTab === 'worldcup' ? 'btn-gold' : 'btn-outline-blue'}`} onClick={() => setActiveTab('worldcup')}>
-            Goal City
-          </button>
-        </div>
       </section>
 
       <NeonDivider />
@@ -1606,16 +1588,12 @@ function WatchFestPage({ data, loading }) {
         <div className="container">
           <LiveBadge />
 
-          <div className="section-tag">{activeTab === 'worldcup' ? 'Goal City' : activeTab === 'all' ? 'Watch Fest' : 'Dodger Fest'}</div>
-          <h2 className="section-heading mb-8" style={{ color: activeTab === 'worldcup' ? 'var(--gold)' : activeTab === 'all' ? 'var(--cream)' : 'var(--blue)' }}>
-            {activeTab === 'worldcup' ? 'GOAL CITY WATCH PARTIES' : activeTab === 'all' ? 'ALL WATCH FEST EVENTS' : 'DODGER GAME NIGHTS'}
+          <div className="section-tag">Goal City</div>
+          <h2 className="section-heading mb-8" style={{ color: 'var(--gold)' }}>
+            GOAL CITY WATCH PARTIES
           </h2>
           <p style={{ fontFamily: 'var(--font-label)', fontSize: 14, color: 'var(--muted)', marginBottom: 28, maxWidth: 760 }}>
-            {activeTab === 'worldcup'
-              ? 'Goal City is the flagship World Cup identity inside Watch Fest. Use this tab for match flyers, kickoff times, venues, and ticket links. For the biggest games, the flagship outdoor event can live at The Shops on 4th & Main with vendors, drinks, activities, and live music.'
-              : activeTab === 'all'
-              ? 'All Watch Fest events across both Dodger Fest and Goal City. Baseball nights, World Cup watch parties, and more across the Latin District.'
-              : 'Dodger Fest is the baseball lane inside Watch Fest. Use this tab for Dodgers watch-night flyers, featured game schedules, and supporting venue activations across the district.'}
+            Match flyers, kickoff times, venues, and ticket links. For the biggest games, the flagship outdoor watch party takes over The Shops at 4th &amp; Main with vendors, drinks, activities, and live music.
           </p>
 
           {/* Next match status / countdown */}
@@ -1654,8 +1632,8 @@ function WatchFestPage({ data, loading }) {
             </div>
           )}
 
-          {/* Flagship outdoor venue info — World Cup only */}
-          {activeTab === 'worldcup' && (
+          {/* Flagship outdoor venue info */}
+          {(
             <div style={{ background: 'linear-gradient(135deg, rgba(0,200,83,.04), rgba(255,179,0,.04))', border: '1px solid rgba(0,200,83,.18)', borderRadius: 4, padding: '20px 24px', marginBottom: 32 }}>
               <div style={{ fontFamily: 'var(--font-label)', fontSize: 11, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--green)', marginBottom: 8 }}>
                 Flagship Outdoor Watch Party Venue
@@ -1677,8 +1655,8 @@ function WatchFestPage({ data, loading }) {
           {!loading && flagship && (
             <div className="flagship-card mb-40">
               <div style={{ marginBottom: 12 }}>
-                <span style={{ fontFamily: 'var(--font-label)', fontSize: 11, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: activeTab === 'worldcup' ? 'var(--gold)' : 'var(--blue)', background: activeTab === 'worldcup' ? 'rgba(255,179,0,.15)' : 'rgba(0,229,255,.15)', border: activeTab === 'worldcup' ? '1px solid rgba(255,179,0,.3)' : '1px solid rgba(0,229,255,.3)', borderRadius: 2, padding: '4px 10px' }}>
-                  ★ Featured {activeTab === 'worldcup' ? 'Goal City' : 'Dodger Fest'} Event
+                <span style={{ fontFamily: 'var(--font-label)', fontSize: 11, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--gold)', background: 'rgba(255,179,0,.15)', border: '1px solid rgba(255,179,0,.3)', borderRadius: 2, padding: '4px 10px' }}>
+                  ★ Featured Goal City Event
                 </span>
               </div>
               {flagship.team_flags && (
@@ -1719,14 +1697,8 @@ function WatchFestPage({ data, loading }) {
             </div>
           ) : (
             <div className="empty-state">
-              <div className="empty-state__icon">{activeTab === 'worldcup' ? '⚽' : activeTab === 'all' ? '🏟️' : '⚾'}</div>
-              <p>
-                {activeTab === 'worldcup'
-                  ? 'No World Cup events yet — add rows in the WatchFest tab with category set to worldcup.'
-                  : activeTab === 'all'
-                  ? 'No Watch Fest events yet — add rows in the WatchFest tab.'
-                  : 'No Dodger games yet — add rows in the WatchFest tab with category set to dodgers.'}
-              </p>
+              <div className="empty-state__icon">⚽</div>
+              <p>No Goal City events yet — add rows in the WatchFest tab with category set to worldcup.</p>
             </div>
           )}
         </div>
