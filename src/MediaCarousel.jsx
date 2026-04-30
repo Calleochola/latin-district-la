@@ -10,10 +10,34 @@ function getTikTokVideoId(url) {
   return match ? match[1] : null
 }
 
+// Extracts a Drive file ID from ANY known Drive URL format and returns
+// the lh3.googleusercontent.com CDN URL — the only format that reliably
+// renders in <img> tags without auth or redirects.
 function convertDriveUrl(url) {
   if (!url) return ''
-  const match = url.match(/\/d\/([^/]+)\//)
-  if (match) return `https://drive.google.com/uc?export=view&id=${match[1]}`
+
+  // Already the correct CDN format — pass through
+  if (url.includes('lh3.googleusercontent.com')) return url
+
+  let fileId = null
+
+  // /file/d/{ID}/  or  /d/{ID}/
+  const dMatch = url.match(/\/d\/([a-zA-Z0-9_-]{25,})/)
+  if (dMatch) fileId = dMatch[1]
+
+  // ?id={ID} or &id={ID}  (covers open?id= and uc?export=view&id=)
+  if (!fileId) {
+    const idMatch = url.match(/[?&]id=([a-zA-Z0-9_-]{25,})/)
+    if (idMatch) fileId = idMatch[1]
+  }
+
+  // Raw file ID string
+  if (!fileId && /^[a-zA-Z0-9_-]{25,}$/.test(url.trim())) {
+    fileId = url.trim()
+  }
+
+  if (fileId) return `https://lh3.googleusercontent.com/d/${fileId}`
+
   return url
 }
 
@@ -26,10 +50,6 @@ function detectType(url) {
 }
 
 // ── CarouselSlide ─────────────────────────────────────────────────────────────
-// Renders into the `media-carousel__track` padding-top container.
-// All children use position:absolute so they fill the track correctly.
-// Images track broken state locally to show a clean placeholder instead of a
-// broken-image box when the src fails to load.
 function CarouselSlide({ rawUrl, type, isFirst }) {
   const [imgBroken, setImgBroken] = useState(false)
 
@@ -65,7 +85,6 @@ function CarouselSlide({ rawUrl, type, isFirst }) {
     )
   }
 
-  // Image — convert Drive URLs, show placeholder if missing or broken
   const url = convertDriveUrl(rawUrl)
   if (!url || imgBroken) {
     return <div className="media-carousel__placeholder">Image unavailable</div>
@@ -83,11 +102,6 @@ function CarouselSlide({ rawUrl, type, isFirst }) {
 }
 
 // ── MediaCarousel ─────────────────────────────────────────────────────────────
-// Props:
-//   mediaUrls  — pipe-separated list of URLs          (required)
-//   mediaTypes — pipe-separated list of type strings  (optional, auto-detected if omitted)
-//
-// Media order convention enforced by callers: flyer → venue → video
 export default function MediaCarousel({ mediaUrls, mediaTypes }) {
   const [current, setCurrent] = useState(0)
   const touchStartX = useRef(null)
@@ -97,7 +111,6 @@ export default function MediaCarousel({ mediaUrls, mediaTypes }) {
 
   if (rawUrls.length === 0) return null
 
-  // Auto-detect type from URL when explicit type not provided or blank
   const entries = rawUrls.map((url, i) => ({
     url,
     type: rawTypes[i] || detectType(url),
@@ -118,13 +131,11 @@ export default function MediaCarousel({ mediaUrls, mediaTypes }) {
     touchStartX.current = null
   }
 
-  // Apply 16:9 track for YouTube so the iframe fills the correct aspect ratio
   const trackClass = `media-carousel__track${activeType === 'youtube' ? ' media-carousel__track--16x9' : ''}`
 
   return (
     <div className="media-carousel" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
       <div className={trackClass}>
-        {/* key on type+url resets broken-image state when slide changes */}
         <CarouselSlide rawUrl={activeUrl} type={activeType} key={`${current}-${activeType}`} isFirst={current === 0} />
       </div>
 
