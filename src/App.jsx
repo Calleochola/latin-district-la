@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { BrowserRouter, Routes, Route, Link, NavLink, useNavigate, useLocation, useSearchParams } from 'react-router-dom'
 import MediaCarousel from './MediaCarousel'
 import Resources from './Resources'
+import SubmitEventPage from './pages/SubmitEventPage'
 import { trackPageview, trackTicketClick, trackContactSubmit, trackEventSubmit } from './analytics.js'
 
 // ── Constants ──────────────────────────────────────────────────────────────
@@ -69,8 +70,7 @@ const STATUS_COLORS = {
 // Workflow:
 //   1. Venue submits form → flyer/venue images land in Google Drive as upload links.
 //   2. Admin reviews the submission in Sheets.
-//   3. Admin re-hosts the image (e.g., uploads to Drive with "anyone with link can view",
-//      Cloudinary, or any public CDN), then pastes the stable public URL into
+//   3. Admin re-hosts the image (stable public URL) into
 //      flyer_image_url / venue_image_url columns.
 //   4. Admin sets status = approved → row goes live on the site.
 //
@@ -2000,92 +2000,6 @@ function BarCrawlPage({ data, loading }) {
               </div>
             ))}
           </div>
-        </div>
-      </section>
-    </div>
-  )
-}
-
-// ── SUBMIT EVENT PAGE ───────────────────────────────────────────────────────
-
-// ── Flyer → base64 helper ────────────────────────────────────────────────────
-// Reads the selected file as a base64 string using FileReader.
-// The base64 is included in the form payload and forwarded by submit-event.js
-// to Apps Script, which performs the actual Google Drive upload via DriveApp.
-// No separate upload step — the whole submission (file + form data) is one POST.
-//
-// Allowed types: JPG, PNG, WEBP (HEIC blocked — browsers cannot render it).
-// Max size: 4 MB (base64 overhead keeps the payload under Netlify's 6 MB body limit).
-const FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSePzeMZBlBGxD6zC9pY79Kort3cnUcssveQKKrzpt-fCztAZQ/viewform'
-
-const SUBMIT_STEPS = [
-  { num: '01', label: 'Fill out the form', body: 'Enter your event details and upload a flyer. A Google account is required for the file upload.' },
-  { num: '02', label: 'We review it', body: 'Our team checks your submission and approves it within 48 hours.' },
-  { num: '03', label: 'Your event goes live', body: 'Once approved your event appears on the site automatically — no follow-up needed.' },
-]
-
-function SubmitEventPage() {
-  return (
-    <div className="page-top">
-      <section className="section">
-        <div className="container" style={{ textAlign: 'center' }}>
-          <div className="section-tag">For Promoters &amp; Organizers</div>
-          <h1 className="section-heading neon-blue mb-16">SUBMIT YOUR EVENT</h1>
-          <p style={{ fontFamily: 'var(--font-body)', fontSize: 15, color: 'var(--muted)', lineHeight: 1.7, maxWidth: 520, margin: '0 auto 48px' }}>
-            Get your Latin music event in front of thousands of DTLA nightlife attendees.
-            All genres welcome.
-          </p>
-
-          {/* Steps */}
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, justifyContent: 'center', marginBottom: 48 }}>
-            {SUBMIT_STEPS.map(s => (
-              <div key={s.num} style={{
-                flex: '1 1 220px',
-                maxWidth: 260,
-                background: 'var(--card-bg)',
-                border: '1px solid rgba(0,229,255,.14)',
-                borderRadius: 12,
-                padding: '24px 20px',
-                textAlign: 'left',
-              }}>
-                <div style={{ fontFamily: 'var(--font-label)', fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', color: 'var(--blue)', marginBottom: 10 }}>
-                  {s.num}
-                </div>
-                <div style={{ fontFamily: 'var(--font-label)', fontSize: 13, fontWeight: 700, color: '#fff', marginBottom: 8 }}>
-                  {s.label}
-                </div>
-                <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--muted)', lineHeight: 1.6 }}>
-                  {s.body}
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* CTA */}
-          <a
-            href={FORM_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              display: 'inline-block',
-              padding: '14px 40px',
-              background: 'var(--blue)',
-              color: '#000',
-              fontFamily: 'var(--font-label)',
-              fontSize: 13,
-              fontWeight: 700,
-              letterSpacing: '0.12em',
-              textTransform: 'uppercase',
-              textDecoration: 'none',
-              borderRadius: 8,
-              boxShadow: '0 0 28px rgba(0,229,255,.35)',
-            }}
-          >
-            Open Submission Form
-          </a>
-          <p style={{ fontFamily: 'var(--font-label)', fontSize: 11, color: 'var(--muted)', marginTop: 14, opacity: 0.6 }}>
-            Opens in a new tab &mdash; sign in with Google to upload your flyer
-          </p>
         </div>
       </section>
     </div>
