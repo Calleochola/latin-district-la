@@ -91,9 +91,9 @@ function parseEventDate(str) {
   // YYYY-MM-DD: parse as local midnight (avoids UTC shift in negative-offset timezones)
   const iso = str.match(/^(\d{4})-(\d{2})-(\d{2})$/)
   if (iso) return new Date(+iso[1], +iso[2] - 1, +iso[3])
-  // gviz raw Date() format e.g. "Date(2026,2,20)" — month is already 0-indexed
-  const gviz = str.match(/^Date\((\d+),(\d+),(\d+)\)$/)
-  if (gviz) return new Date(+gviz[1], +gviz[2], +gviz[3])
+  // gviz raw Date() format e.g. "Date(2026,2,20)" or datetime "Date(2026,5,12,12,0,0)" — month is already 0-indexed
+  const gviz = str.match(/^Date\((\d+),(\d+),(\d+)(?:,(\d+),(\d+),(\d+))?\)$/)
+  if (gviz) return new Date(+gviz[1], +gviz[2], +gviz[3], +(gviz[4]||0), +(gviz[5]||0), +(gviz[6]||0))
   const d = new Date(str)
   return isNaN(d.getTime()) ? null : d
 }
@@ -185,10 +185,7 @@ function getThisWeekendEvents(events) {
   const fridayLA  = new Date(todayLA); fridayLA.setDate(todayLA.getDate() + daysToFri)
   const sundayLA  = new Date(fridayLA); sundayLA.setDate(fridayLA.getDate() + 2)
 
-  const isApproved = e => {
-    const s = (e.status || '').toLowerCase().trim()
-    return s !== 'cancelled' && s !== 'rejected'
-  }
+  const isApproved = () => true  // active column is the only publish gate
 
   const parseTime = timeStr => {
     if (!timeStr) return 0
@@ -207,9 +204,10 @@ function getThisWeekendEvents(events) {
     return diff !== 0 ? diff : parseTime(a.time) - parseTime(b.time)
   }
 
-  // Weekend events: active, approved, upcoming, and date falls on Fri/Sat/Sun
+  // Weekend events: active=TRUE and upcoming, date falls on Fri/Sat/Sun
   const weekendEvents = events
     .filter(e => {
+      if (!e.event_name || !e.event_name.trim()) return false
       if (!isActiveItem(e.active) || !isApproved(e) || !isUpcoming(e)) return false
       const d = parseEventDate(e.date)
       if (!d) return false
@@ -971,6 +969,7 @@ function HomePage({ data, loading }) {
           <p className="hero__sub">Multiple venues. One district. Los Angeles.</p>
           <div className="hero__buttons">
             <Link to="/events" className="btn btn-red">See This Week →</Link>
+            <Link to="/watchfest" className="btn btn-gold">Watch Parties →</Link>
           </div>
         </div>
       </section>
@@ -1212,22 +1211,7 @@ function HomePage({ data, loading }) {
         </div>
       </section>
 
-      <NeonDivider />
 
-      {/* ── Bar Crawl Band ── */}
-      <section className="band band-purple">
-        <div className="container" style={{ textAlign: 'center' }}>
-          <div className="section-tag" style={{ color: 'var(--purple)' }}>Coming Soon</div>
-          <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: 'clamp(48px, 12vw, 96px)', lineHeight: .95, color: 'var(--cream)', marginBottom: 16 }}>
-            BAR<br /><span className="neon-purple" style={{ color: 'var(--purple)' }}>CRAWL</span>
-          </h2>
-          <p style={{ fontFamily: 'var(--font-label)', fontSize: 16, color: 'var(--muted)', maxWidth: 480, margin: '0 auto', lineHeight: 1.5 }}>
-            A guided crawl through DTLA's best Latin venues — routes, wristband perks, and drink specials. Details dropping soon.
-          </p>
-        </div>
-      </section>
-
-      <NeonDivider />
 
       {/* ── Collaborator CTA ── */}
       <section className="section">
@@ -1253,12 +1237,10 @@ function HomePage({ data, loading }) {
 // ── EVENTS PAGE ─────────────────────────────────────────────────────────────
 
 const FILTER_OPTIONS = [
-  { value: 'all',          label: 'All Events' },
-  { value: 'Friday Night', label: 'Friday Night' },
-  { value: 'Watch Fest',   label: 'Watch Fest' },
-  { value: 'Special',      label: 'Special' },
-  { value: 'Other',        label: 'Other' },
-  { value: 'calendar',     label: 'Calendar', to: '/calendar' },
+  { value: 'today',      label: 'Today' },
+  { value: 'all',        label: 'All Events' },
+  { value: 'Watch Fest', label: 'Watch Fest' },
+  { value: 'calendar',   label: 'Calendar', to: '/calendar' },
 ]
 
 // Returns the canonical site_tab for an event row.
@@ -1304,11 +1286,14 @@ function EventsPage({ data, loading }) {
 
   const events = data.events.filter(e => {
     if (!isActiveItem(e.active)) return false
+    if (!e.event_name || !e.event_name.trim()) return false
 
-    // Only block explicitly cancelled/rejected rows.
-    // submitted, approved, and blank all pass — active=TRUE is the publish gate.
-    const status = (e.status || '').toLowerCase().trim()
-    if (status === 'cancelled' || status === 'rejected') return false
+    if (filter === 'today') {
+      const d = parseEventDate(e.date)
+      if (!d) return false
+      const now = new Date()
+      return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate()
+    }
 
     if (!isUpcoming(e)) return false
 
@@ -1413,8 +1398,6 @@ function FridayNightPage({ data, loading }) {
   const fridayEvents = useMemo(() =>
     data.events.filter(e => {
       if (!isActiveItem(e.active)) return false
-      const estatus = (e.status || '').toLowerCase().trim()
-      if (estatus === 'cancelled' || estatus === 'rejected') return false
       if (!isUpcoming(e)) return false
       const d = parseEventDate(e.date)
       return d !== null && d.getDay() === 5
@@ -1551,23 +1534,70 @@ function FridayNightPage({ data, loading }) {
 
 // ── WATCH FEST PAGE ─────────────────────────────────────────────────────────
 
+// Extract unique team names from a match string like "Mexico vs South Africa"
+function extractTeams(item) {
+  const name = item.match_name || item.event_name || ''
+  const parts = name.split(/\s+vs\.?\s+/i)
+  if (parts.length === 2) return [parts[0].trim(), parts[1].trim()]
+  // Also try from team_flags emoji+name patterns if available
+  return []
+}
+
 function WatchFestPage({ data, loading }) {
-  const activeEvents = Array.isArray(data.watchfest) ? data.watchfest.filter(item => {
+  const [teamFilter, setTeamFilter] = useState('All')
+
+  const activeEvents = useMemo(() => Array.isArray(data.watchfest) ? data.watchfest.filter(item => {
     if (!isActiveItem(item.active)) return false
     const status = (item.status || '').toLowerCase()
     if (status === 'cancelled' || status === 'rejected') return false
     if (getWatchfestCategory(item) === 'dodgers') return false
     if (!isUpcoming(item)) return false
     return true
-  }) : []
+  }) : [], [data.watchfest])
+
   const flagship = activeEvents.find(isFlagshipItem)
 
   const nextEvent = useMemo(() =>
     activeEvents
-      .filter(e => { const d = new Date(e.kickoff_datetime || e.date); return !isNaN(d) && d > Date.now() })
-      .sort((a, b) => new Date(a.kickoff_datetime || a.date) - new Date(b.kickoff_datetime || b.date))[0]
+      .filter(e => { const d = parseEventDate(e.kickoff_datetime || e.date); return d && d > Date.now() })
+      .sort((a, b) => {
+        const da = parseEventDate(a.kickoff_datetime || a.date) || 0
+        const db = parseEventDate(b.kickoff_datetime || b.date) || 0
+        return da - db
+      })[0]
   , [activeEvents])
   const pageStatus = useKickoffStatus(nextEvent?.kickoff_datetime || nextEvent?.date)
+
+  // Build sorted team list from all active match names
+  const allTeams = useMemo(() => {
+    const set = new Set()
+    activeEvents.forEach(e => extractTeams(e).forEach(t => set.add(t)))
+    return ['All', ...Array.from(set).sort()]
+  }, [activeEvents])
+
+  // Filter + sort by date
+  const filteredEvents = useMemo(() => {
+    const evts = teamFilter === 'All'
+      ? activeEvents
+      : activeEvents.filter(e => extractTeams(e).includes(teamFilter))
+    return [...evts].sort((a, b) => {
+      const da = parseEventDate(a.kickoff_datetime || a.date) || 0
+      const db = parseEventDate(b.kickoff_datetime || b.date) || 0
+      return da - db
+    })
+  }, [activeEvents, teamFilter])
+
+  // Group filtered events by date label
+  const eventsByDate = useMemo(() => {
+    const groups = []
+    const seen = new Map()
+    filteredEvents.forEach(e => {
+      const label = formatDate(e.date) || 'TBD'
+      if (!seen.has(label)) { seen.set(label, []); groups.push({ label, items: seen.get(label) }) }
+      seen.get(label).push(e)
+    })
+    return groups
+  }, [filteredEvents])
 
   return (
     <div className="page-top">
@@ -1578,7 +1608,7 @@ function WatchFestPage({ data, loading }) {
           <div className="neon-gold" style={{ color: 'var(--gold)' }}>FEST</div>
         </div>
         <p style={{ fontFamily: 'var(--font-label)', fontSize: 16, color: 'var(--muted)', maxWidth: 620, margin: '20px auto 0', lineHeight: 1.5, position: 'relative', zIndex: 1 }}>
-          Goal City is Latin District LA's World Cup watch party series — big screens, live music, vendors, and the energy of DTLA all in one place.
+          Goal City — World Cup watch parties scattered across multiple venues in the Latin District. Find your match, find your spot.
         </p>
       </section>
 
@@ -1590,17 +1620,17 @@ function WatchFestPage({ data, loading }) {
 
           <div className="section-tag">Goal City</div>
           <h2 className="section-heading mb-8" style={{ color: 'var(--gold)' }}>
-            GOAL CITY WATCH PARTIES
+            WORLD CUP WATCH PARTIES
           </h2>
           <p style={{ fontFamily: 'var(--font-label)', fontSize: 14, color: 'var(--muted)', marginBottom: 28, maxWidth: 760 }}>
-            Match flyers, kickoff times, venues, and ticket links. For the biggest games, the flagship outdoor watch party takes over The Shops at 4th &amp; Main with vendors, drinks, activities, and live music.
+            Multiple venues. Multiple matches. Each watch party is hosted at a different spot across the Latin District — check the venue on each card and grab your tickets.
           </p>
 
           {/* Next match status / countdown */}
           {!loading && nextEvent && pageStatus && (
             <div style={{ background: 'rgba(255,179,0,.06)', border: `1px solid ${pageStatus.state === 'live' ? 'rgba(0,200,83,.4)' : 'rgba(255,179,0,.25)'}`, borderRadius: 4, padding: '20px 24px', marginBottom: 28 }}>
               <div style={{ fontFamily: 'var(--font-label)', fontSize: 11, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 6 }}>
-                {pageStatus.state === 'live' ? 'Match in Progress' : pageStatus.state === 'final' ? 'Last Match Result' : 'Next Match Countdown'}
+                {pageStatus.state === 'live' ? 'Match in Progress' : pageStatus.state === 'final' ? 'Last Match' : 'Next Match Countdown'}
               </div>
               <div style={{ fontFamily: 'var(--font-heading)', fontSize: 18, color: 'var(--cream)', marginBottom: 14 }}>
                 {nextEvent.match_name || nextEvent.event_name}
@@ -1632,31 +1662,12 @@ function WatchFestPage({ data, loading }) {
             </div>
           )}
 
-          {/* Flagship outdoor venue info */}
-          {(
-            <div style={{ background: 'linear-gradient(135deg, rgba(0,200,83,.04), rgba(255,179,0,.04))', border: '1px solid rgba(0,200,83,.18)', borderRadius: 4, padding: '20px 24px', marginBottom: 32 }}>
-              <div style={{ fontFamily: 'var(--font-label)', fontSize: 11, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--green)', marginBottom: 8 }}>
-                Flagship Outdoor Watch Party Venue
-              </div>
-              <h3 style={{ fontFamily: 'var(--font-heading)', fontSize: 'clamp(20px, 5vw, 32px)', color: 'var(--cream)', marginBottom: 8 }}>
-                THE SHOPS AT 4TH & MAIN
-              </h3>
-              <p style={{ fontFamily: 'var(--font-label)', fontSize: 14, color: 'var(--muted)', lineHeight: 1.6, maxWidth: 640, marginBottom: 12 }}>
-                Downtown Los Angeles. For the biggest matches, the flagship Goal City outdoor watch party takes over The Shops at 4th & Main — an open-air street plaza in the heart of DTLA. Expect outdoor big screens, vendor activations, drink specials, activities, and live music before and after kickoff.
-              </p>
-              <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', fontFamily: 'var(--font-label)', fontSize: 12, color: 'var(--muted)' }}>
-                <span>📍 4th St &amp; Main St, Downtown Los Angeles</span>
-                <span>🎤 Live music · Vendors · Big screens</span>
-                <span>🍻 Drink activations · Activities</span>
-              </div>
-            </div>
-          )}
-
+          {/* Featured / flagship match */}
           {!loading && flagship && (
             <div className="flagship-card mb-40">
               <div style={{ marginBottom: 12 }}>
                 <span style={{ fontFamily: 'var(--font-label)', fontSize: 11, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--gold)', background: 'rgba(255,179,0,.15)', border: '1px solid rgba(255,179,0,.3)', borderRadius: 2, padding: '4px 10px' }}>
-                  ★ Featured Goal City Event
+                  ★ Featured Watch Party
                 </span>
               </div>
               {flagship.team_flags && (
@@ -1666,7 +1677,7 @@ function WatchFestPage({ data, loading }) {
                 {flagship.match_name || flagship.event_name}
               </h3>
               {flagship.match_stage && (
-                <div style={{ fontFamily: 'var(--font-label)', fontSize: 13, letterSpacing: '.1em', textTransform: 'uppercase', color: activeTab === 'worldcup' ? 'var(--gold)' : 'var(--blue)', marginBottom: 12 }}>
+                <div style={{ fontFamily: 'var(--font-label)', fontSize: 13, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: 12 }}>
                   {flagship.match_stage}
                 </div>
               )}
@@ -1674,7 +1685,6 @@ function WatchFestPage({ data, loading }) {
               <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 12, fontFamily: 'var(--font-label)', fontSize: 14, color: 'var(--muted)' }}>
                 {flagship.date && <span>📅 {formatDate(flagship.date)}{flagship.time ? ` · ${flagship.time}` : ''}</span>}
                 {flagship.venue && <span>📍 {flagship.venue}</span>}
-                {flagship.tailgate_time && <span>🎉 Tailgate {flagship.tailgate_time}</span>}
               </div>
               {flagship.description && (
                 <p style={{ fontFamily: 'var(--font-label)', fontSize: 14, color: 'var(--muted)', maxWidth: 760, lineHeight: 1.55, marginBottom: 16 }}>
@@ -1689,16 +1699,47 @@ function WatchFestPage({ data, loading }) {
             </div>
           )}
 
+          {/* Team / country filter chips */}
+          {!loading && allTeams.length > 1 && (
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 28 }}>
+              {allTeams.map(team => (
+                <button
+                  key={team}
+                  onClick={() => setTeamFilter(team)}
+                  style={{
+                    fontFamily: 'var(--font-label)', fontSize: 12, fontWeight: 700,
+                    letterSpacing: '.08em', textTransform: 'uppercase',
+                    padding: '6px 14px', borderRadius: 2, cursor: 'pointer',
+                    border: teamFilter === team ? '1px solid var(--gold)' : '1px solid rgba(255,255,255,.12)',
+                    background: teamFilter === team ? 'rgba(255,179,0,.15)' : 'transparent',
+                    color: teamFilter === team ? 'var(--gold)' : 'var(--muted)',
+                    transition: 'all .15s',
+                  }}
+                >
+                  {team}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Events grouped by date */}
           {loading ? (
             <div className="events-grid">{[1,2,3,4].map(i => <SkeletonCard key={i} />)}</div>
-          ) : activeEvents.length > 0 ? (
-            <div className="events-grid">
-              {activeEvents.map((item, i) => <WatchFestCard key={i} item={item} />)}
-            </div>
+          ) : eventsByDate.length > 0 ? (
+            eventsByDate.map(({ label, items }) => (
+              <div key={label} style={{ marginBottom: 40 }}>
+                <div style={{ fontFamily: 'var(--font-label)', fontSize: 11, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--gold)', borderBottom: '1px solid rgba(255,179,0,.2)', paddingBottom: 8, marginBottom: 20 }}>
+                  {label}
+                </div>
+                <div className="events-grid">
+                  {items.map((item, i) => <WatchFestCard key={i} item={item} />)}
+                </div>
+              </div>
+            ))
           ) : (
             <div className="empty-state">
               <div className="empty-state__icon">⚽</div>
-              <p>No Goal City events yet — add rows in the WatchFest tab with category set to worldcup.</p>
+              <p>{teamFilter !== 'All' ? `No upcoming watch parties for ${teamFilter}.` : 'No watch parties yet — check back soon.'}</p>
             </div>
           )}
         </div>
@@ -2154,12 +2195,9 @@ function CalendarPage({ data, loading }) {
   const [selectedDay, setSelectedDay]   = useState(null)
   const [calModalEvent, setCalModalEvent] = useState(null)
 
-  // Only show approved + active items on the calendar and list
-  // Old rows without a status field continue to show for backwards compatibility.
+  // active=TRUE is the only publish gate — no status check needed.
   const approvedEvents = useMemo(() => data.events.filter(e => {
     if (!isActiveItem(e.active)) return false
-    const estatus = (e.status || '').toLowerCase().trim()
-    if (estatus === 'cancelled' || estatus === 'rejected') return false
     if (!isUpcoming(e)) return false
     return true
   }), [data.events])
