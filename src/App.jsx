@@ -921,6 +921,7 @@ function HomePage({ data, loading }) {
     }
   }, [])
 
+  const [weekendTab, setWeekendTab] = useState('watchparties')
   const { events: weekendEvents, isWeekend } = getThisWeekendEvents(data.events)
   const spotlightEvent = data.events.find(e => isActiveItem(e.active) && isSpotlightItem(e) && isUpcoming(e))
   const flagshipEvent = data.events.find(e => isActiveItem(e.active) && isFlagshipItem(e) && isUpcoming(e))
@@ -1085,31 +1086,90 @@ function HomePage({ data, loading }) {
         </>
       )}
 
-      {/* ── This Weekend Events ── */}
-      <section className="section">
-        <div className="container">
-          <div className="section-tag">This Weekend in DTLA</div>
-          <h2 className="section-heading neon-blue">THIS WEEKEND IN DTLA</h2>
-          <p style={{ fontFamily: 'var(--font-label)', fontSize: 15, color: 'var(--muted)', marginBottom: 28, marginTop: -8 }}>
-            Your plan for Friday, Saturday &amp; Sunday
-          </p>
-          {loading ? (
-            <div className="events-grid">{[1,2,3].map(i => <SkeletonCard key={i} />)}</div>
-          ) : weekendEvents.length > 0 ? (
-            <div className="events-grid content-reveal">
-              {weekendEvents.map((e, i) => <EventCard key={i} event={e} />)}
+      {/* ── This Weekend — Watch Parties / Events tabs ── */}
+      {(() => {
+        const upcomingWatchParties = (data.watchfest || [])
+          .filter(w => isActiveItem(w.active) && isUpcoming(w))
+          .sort((a, b) => {
+            const da = parseEventDate(a.kickoff_datetime || a.date) || 0
+            const db = parseEventDate(b.kickoff_datetime || b.date) || 0
+            return da - db
+          })
+          .slice(0, 3)
+        return (
+          <section className="section">
+            <div className="container">
+              <div className="section-tag">This Weekend in DTLA</div>
+              <h2 className="section-heading">THIS WEEKEND IN DTLA</h2>
+
+              {/* Tab switcher */}
+              <div style={{ display: 'flex', gap: 0, marginBottom: 28, marginTop: 4, borderBottom: '1px solid rgba(255,255,255,.08)' }}>
+                {[
+                  { id: 'watchparties', label: '⚽ Watch Parties', activeColor: 'var(--gold)', activeBorder: 'var(--gold)' },
+                  { id: 'events',       label: '🎉 Events',        activeColor: 'var(--blue)',  activeBorder: 'var(--blue)' },
+                ].map(tab => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setWeekendTab(tab.id)}
+                    style={{
+                      fontFamily: 'var(--font-label)', fontSize: 13, fontWeight: 700,
+                      letterSpacing: '.08em', textTransform: 'uppercase',
+                      padding: '10px 20px', background: 'none', border: 'none',
+                      borderBottom: weekendTab === tab.id ? `2px solid ${tab.activeBorder}` : '2px solid transparent',
+                      color: weekendTab === tab.id ? tab.activeColor : 'var(--muted)',
+                      cursor: 'pointer', transition: 'all .15s', marginBottom: -1,
+                    }}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Watch Parties tab */}
+              {weekendTab === 'watchparties' && (
+                loading ? (
+                  <div className="events-grid">{[1,2,3].map(i => <SkeletonCard key={i} />)}</div>
+                ) : upcomingWatchParties.length > 0 ? (
+                  <>
+                    <div className="events-grid content-reveal">
+                      {upcomingWatchParties.map((w, i) => <WatchFestCard key={i} item={w} />)}
+                    </div>
+                    <div style={{ textAlign: 'center', marginTop: 32 }}>
+                      <Link to="/watchfest" className="btn btn-gold" onClick={() => window.scrollTo({ top: 0, behavior: 'instant' })}>See All Watch Parties →</Link>
+                    </div>
+                  </>
+                ) : (
+                  <div className="empty-state">
+                    <div className="empty-state__icon">⚽</div>
+                    <p>Watch party schedule dropping soon — check back!</p>
+                  </div>
+                )
+              )}
+
+              {/* Events tab */}
+              {weekendTab === 'events' && (
+                loading ? (
+                  <div className="events-grid">{[1,2,3].map(i => <SkeletonCard key={i} />)}</div>
+                ) : weekendEvents.length > 0 ? (
+                  <>
+                    <div className="events-grid content-reveal">
+                      {weekendEvents.map((e, i) => <EventCard key={i} event={e} />)}
+                    </div>
+                    <div style={{ textAlign: 'center', marginTop: 32 }}>
+                      <Link to="/events" className="btn btn-outline-blue" onClick={() => window.scrollTo({ top: 0, behavior: 'instant' })}>View All Events →</Link>
+                    </div>
+                  </>
+                ) : (
+                  <div className="empty-state">
+                    <div className="empty-state__icon">🎉</div>
+                    <p>Events updating soon — follow @LatinDistrictLA for announcements</p>
+                  </div>
+                )
+              )}
             </div>
-          ) : (
-            <div className="empty-state">
-              <div className="empty-state__icon">🎉</div>
-              <p>Events updating soon — follow @LatinDistrictLA for announcements</p>
-            </div>
-          )}
-          <div style={{ textAlign: 'center', marginTop: 32 }}>
-            <Link to="/events" className="btn btn-outline-blue" onClick={() => window.scrollTo({ top: 0, behavior: 'instant' })}>View All Events →</Link>
-          </div>
-        </div>
-      </section>
+          </section>
+        )
+      })()}
 
       <NeonDivider />
 
