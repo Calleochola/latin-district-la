@@ -9,19 +9,32 @@ import { trackPageview, trackTicketClick, trackContactSubmit, trackEventSubmit }
 // ── Constants ──────────────────────────────────────────────────────────────
 
 const FALLBACK_VENUES = [
-  { venue_name: 'Rhythm Room LA',      tag: 'Dance Floor · DJ Sets',          active: 'yes' },
-  { venue_name: 'Las Perlas',           tag: 'Mezcal Bar · Cocktails',          active: 'yes' },
-  { venue_name: 'The Grayson',          tag: 'Dancehall · Live Sound',          active: 'yes' },
-  { venue_name: 'Continental Club',     tag: 'Bar · Social',                    active: 'yes' },
-  { venue_name: 'Spring Street Bar',    tag: 'Neighborhood Bar',                active: 'yes' },
-  { venue_name: 'Broken Shaker',        tag: 'Craft Cocktails · Patio',         active: 'yes' },
-  { venue_name: 'The Slipper Clutch',   tag: 'Raw · Unexpected',                active: 'yes' },
-  { venue_name: 'Caña Rum Bar',         tag: 'Rum · Latin Roots',               active: 'yes' },
-  { venue_name: 'Chicka Bonita Lounge', tag: 'Lounge · Groups',                 active: 'yes' },
-  { venue_name: 'Kiso',                 tag: 'Modern · DJ Sets',                active: 'yes' },
-  { venue_name: 'Florentín Rooftop',    tag: 'Rooftop · Skyline Views',         active: 'yes' },
-  { venue_name: 'A Toda Madre',         tag: 'Cultural · Bold',                 active: 'yes' },
-  { venue_name: 'The Association',      tag: 'Underground · Original',          active: 'yes' },
+  { venue_name: 'Rhythm Room LA',        tag: 'Dance Floor · DJ Sets',        active: 'yes', description: 'Underground DTLA lounge with live music, games, DJs, and a lively dance-room feel.',               address: '206 W 6th St #BSMT, Los Angeles, CA 90014',         hours_summary: 'Thu-Sat 6PM-2AM; Sun 6PM-12AM',                              instagram: '@rhythmroomla',        photo_url: 'https://images.squarespace-cdn.com/content/v1/59e009372278e7813f9403c0/1670030253365-L4OSZ2QJUUW3IETQ9JSQ/POOL+LOUNGE+POOL+TABLE+CLOSE+UP+FROM+P1.JPG?format=2500w' },
+  { venue_name: 'Las Perlas',            tag: 'Mezcal Bar · Cocktails',       active: 'yes', description: 'Mezcal-forward DTLA bar with cocktails, patio energy, and Latin nightlife.',                         address: '107 E 6th St, Los Angeles, CA 90014',               hours_summary: 'Mon-Fri 3PM-2AM; Sat-Sun 1PM-2AM',                           instagram: '@lasperlasla',         photo_url: 'https://img.ctykit.com/cdn/ca-dtla/images/tr:w-1800/las-perlas2.jpg' },
+  { venue_name: 'The Grayson',           tag: 'Cocktail Lounge · Live Sound', active: 'yes', description: 'Broadway cocktail lounge built for late nights, music, and high-energy groups.',                     address: '351 S Broadway, Los Angeles, CA 90013',             hours_summary: 'Daily 8PM-2AM',                                               instagram: '@thegraysonla',        photo_url: 'https://www.thegraysondtla.com/_next/image?url=%2Fsections%2Fvisit-bg.jpg&w=1080&q=75' },
+  { venue_name: 'Continental Club',      tag: 'Basement Club · Social',       active: 'yes', description: 'Basement nightlife room with DJs, dancing, and a polished social crowd.',                            address: '116 W 4th St, Los Angeles, CA 90013',               hours_summary: 'Mon 8PM-12AM; Thu 7PM-2AM; Fri-Sat 10PM-2AM',               instagram: '',                     photo_url: 'https://www.circa93.com/wp-content/uploads/2024/03/The-Continental-Club-24.jpg' },
+  { venue_name: 'Spring St Bar',         tag: 'Neighborhood Bar · Cocktails', active: 'yes', description: 'Historic Core neighborhood bar with reliable cocktails and easy watch party energy.',                 address: '626 S Spring St Suite B, Los Angeles, CA 90014',    hours_summary: 'Mon-Fri 5PM-2AM; Sat-Sun 2PM-Late',                          instagram: '@springstbar',         photo_url: 'https://img.mlbstatic.com/mlb-images/image/private/t_16x9/t_w1536/mlb/kusol2ek3erbryzcxt2s.jpg' },
+  { venue_name: 'Broken Shaker',         tag: 'Rooftop · Craft Cocktails',    active: 'yes', description: 'Rooftop pool-deck cocktail bar with tropical drinks and DTLA views.',                                address: '416 W 8th St, Los Angeles, CA 90014',               hours_summary: 'Daily 12PM-12AM',            happy_hour: 'Daily 4PM-7PM',     instagram: '@brokenshaker',        photo_url: 'https://punchdrink.com/wp-content/uploads/2018/03/Slide2-Broken-Shaker-Hotel-Bar-Figueroa-Rudolphs-Los-Angeles-LA.jpg' },
+  { venue_name: 'The Slipper Clutch',    tag: 'Rock Bar · Live Music',        active: 'yes', description: 'Rock speakeasy with live music, arcade energy, and a gritty DTLA feel.',                              address: '351 S Broadway, Los Angeles, CA 90013',             hours_summary: 'Daily 8PM-2AM',                                               instagram: '@theslipperclutch',    photo_url: 'https://platform.la.eater.com/wp-content/uploads/sites/26/chorus/uploads/chorus_asset/file/8457809/2017_05_02_Slipper_Clutch_006.jpg?quality=90&strip=all&w=1200' },
+  { venue_name: 'Caña Rum Bar',          tag: 'Rum Bar · Latin Roots',        active: 'yes', description: 'Rum-focused hideaway with tropical cocktails, Latin flavor, and late-night energy.',                  address: '714 W Olympic Blvd, Los Angeles, CA 90015',         hours_summary: 'Mon-Thu 8PM-2AM; Fri 6PM-3AM; Sat 8PM-2AM; Sun 4PM-11PM',  happy_hour: 'Tue-Sat until 9PM; Sun-Mon all night', instagram: '@canarumbarla', photo_url: 'https://loopmag.co/wp-content/uploads/2024/08/Cana_Patio-2_Wonho-Frank-Lee-1024x683.jpg' },
+  { venue_name: 'Chica Bonita Lounge',   tag: 'Lounge · Groups',              active: 'yes', description: 'Second-floor lounge designed for groups, music, and celebration nights.',                             address: '840 S Spring St, 2nd Floor, Los Angeles, CA 90014', hours_summary: 'Fri-Sat 8PM-2AM',                                             instagram: '@chicabonitalounge',   photo_url: 'https://chicabonitala.com/wp-content/uploads/2025/07/banner.jpg' },
+  { venue_name: 'Kiso',                  tag: 'Queer Bar · DJ Sets',          active: 'yes', description: 'Downtown queer bar with drag, DJs, and a welcoming late-night crowd.',                                address: '107 W 4th St, Los Angeles, CA 90013',               hours_summary: 'Mon closed; Tue 6PM-1AM; Wed-Sat 6PM-2AM; Sun special events', instagram: '@kisolosangeles',     photo_url: 'https://res.cloudinary.com/the-infatuation/image/upload/c_fill,w_1400,ar_4:3,g_center,f_auto/Kiso_los_angeles_ogus4y' },
+  { venue_name: 'Florentín Rooftop',     tag: 'Rooftop · Skyline Views',      active: 'yes', description: 'Mediterranean-inspired rooftop with skyline views, cocktails, and group seating.',                    address: '617 S Spring St, Los Angeles, CA 90014',            hours_summary: 'Mon closed; Tue-Fri 5PM-2AM; Sat 2PM-2AM; Sun 2PM-12AM',    instagram: '@florentindtla',       photo_url: 'https://florentindtla.com/wp-content/uploads/2025/02/Photo-Feb-18-2023-6-15-46-PM-2-scaled.jpg' },
+  { venue_name: 'A Toda Madre',          tag: 'Tequila · Mezcal',             active: 'yes', description: 'Tequila and mezcal lounge with bold Latin design and DJ-driven nights.',                              address: '626 S Spring St, Los Angeles, CA 90014',            hours_summary: 'Daily 5PM-2AM',                                               instagram: '@atodamadrecantina',   photo_url: 'https://s3-media0.fl.yelpcdn.com/bphoto/M7X_vGz9GLXhFWlPWBqWEQ/348s.jpg' },
+  { venue_name: 'The Association',       tag: 'Underground · Cocktails',      active: 'yes', description: 'Moody subterranean cocktail lounge with DJs, leather booths, and classic DTLA nightlife.',             address: '110 E 6th St, Los Angeles, CA 90014',               hours_summary: 'See venue/event calendar',                                    instagram: '',                     photo_url: 'https://img.ctykit.com/cdn/ca-dtla/images/tr:w-1800/association-fb-banner.jpg' },
+  { venue_name: 'La Cita',               tag: 'Cumbia · Live Music',          active: 'yes', description: 'Iconic DTLA bar with cumbia, live music, patio drinks, and a loyal local crowd.',                     address: '336 S Hill St, Los Angeles, CA 90013',              hours_summary: 'Mon-Fri 11AM-2AM; Sat-Sun 10AM-2AM',  happy_hour: 'Daily 4PM-9PM', instagram: '@lacitabar', photo_url: '' },
+  { venue_name: 'Audio Graph Brewing Co', tag: 'Brewery · Sports',            active: 'yes', description: 'South Park brewery with fresh taps, sports-friendly energy, and community seating.',                  address: '1203 S Olive St, Los Angeles, CA 90015',            hours_summary: 'Mon-Thu 4PM-10PM; Fri 4PM-12AM; Sat 12PM-12AM; Sun 2PM-8PM', instagram: '@audiographbeerco',   photo_url: 'https://static.wixstatic.com/media/9c73d9_80f8647bab2d4b469cc826af69b59768~mv2.jpeg/v1/fill/w_490%2Ch_368%2Cal_c%2Cq_80%2Cusm_0.66_1.00_0.01%2Cenc_avif%2Cquality_auto/9c73d9_80f8647bab2d4b469cc826af69b59768~mv2.jpeg' },
+  { venue_name: 'Native Son LA',         tag: 'Rooftop · Craft Beer',         active: 'yes', description: 'DTLA rooftop and bar with craft beer, cocktails, and sunny group-friendly vibes.',                    address: '832 S Olive St, Los Angeles, CA 90014',             hours_summary: 'Mon-Fri 2:30PM-10PM; Sat-Sun 10AM-10PM', happy_hour: 'Daily 4PM-6PM', instagram: '@nativesonla', photo_url: 'https://images.squarespace-cdn.com/content/v1/68bb1d739c950b08f4f3d10e/1757093245762-UFC15SMNAM3A3IQHDLGT/NativeSonLA.jpg' },
+  { venue_name: 'Arts District Brewing', tag: 'Brewery · Games',              active: 'yes', description: 'Large Arts District brewery with games, food, and big-match energy.',                                 address: '828 Traction Ave, Los Angeles, CA 90013',           hours_summary: 'Mon-Thu 11AM-12AM; Fri 11AM-2AM; Sat 12PM-2AM; Sun 12PM-12AM', instagram: '@artsdistrictbrewing', photo_url: 'https://static.wixstatic.com/media/714aff_c239e6edc2c24c7183d073edb81f053d~mv2.jpg/v1/fill/w_317%2Ch_394%2Cq_90%2Cenc_avif%2Cquality_auto/714aff_c239e6edc2c24c7183d073edb81f053d~mv2.jpg' },
+  { venue_name: 'Club Lagos',            tag: 'Dance Club · Event Space',     active: 'yes', description: 'Broadway event space built for big crowds, DJs, and high-impact nightlife.',                          address: '330 S Broadway, Los Angeles, CA 90013',             hours_summary: 'Event-based; verify per event',                               instagram: '@theclublagosla',      photo_url: 'https://img.partyslate.com/companies-cover-image/55328/image-88326bdc-461f-4b7d-b46f-757e8bd41479.jpg?tr=w-3840' },
+  { venue_name: 'Precinct',              tag: 'LGBTQ+ · Drag',                active: 'yes', description: 'Large LGBTQ+ venue with drag, DJs, brunch, dancing, and strong community energy.',                   address: '357 S Broadway, Los Angeles, CA 90013',             hours_summary: 'Mon closed; Tue-Fri 6PM-2AM; Sat 5PM-2AM; Sun 11:30AM-12AM', happy_hour: 'Tue-Sat 6PM-9PM', instagram: '@precinctdtla', photo_url: 'https://precinctdtla.com/wp-content/uploads/2026/05/image.webp' },
+  { venue_name: "Lala's Grill",          tag: 'Argentine Grill · Groups',     active: 'yes', description: 'Argentine grill with hearty plates, group-friendly dining, and happy hour.',                          address: '105 W 9th St, Los Angeles, CA 90015',               hours_summary: 'Sun-Thu 11AM-10PM; Fri-Sat 11AM-10PM', happy_hour: '3PM-6PM', instagram: '@lalasgrill', photo_url: 'https://lalasgrill.com/images/locations/dtla.jpg' },
+  { venue_name: 'Golden Gopher',         tag: 'Dive Bar · Historic',          active: 'yes', description: 'Historic DTLA dive with classic drinks, neon character, and laid-back crowds.',                       address: '417 W 8th St, Los Angeles, CA 90014',               hours_summary: 'Open nightly 3PM-2AM', happy_hour: 'Daily 3PM-8PM',          instagram: '@goldengopherla',      photo_url: 'https://static.wixstatic.com/media/a50d2e_d5e9dd2e777d4799ad09da442ce48bf7~mv2.png/v1/fill/w_980%2Ch_786%2Cal_c%2Cq_90%2Cusm_0.66_1.00_0.01%2Cenc_avif%2Cquality_auto/Gopher%20Exterior%20%281%29.png' },
+  { venue_name: 'West Eight',            tag: 'Nightclub · DJ Sets',          active: 'yes', description: 'Modern nightclub under Hotel Bristol with immersive lights, sound, and late-night energy.',           address: '425 W 8th St, Los Angeles, CA 90014',               hours_summary: 'Event-based; doors often 10PM',                               instagram: '@west8la',             photo_url: '' },
+  { venue_name: 'Five Star Bar',         tag: 'Live Music · Local Bar',       active: 'yes', description: 'Local DTLA live-music bar with underground energy and late-night shows.',                              address: '267 S Main St, Los Angeles, CA 90012',              hours_summary: 'Event-based; verify per show',                                instagram: '@5starbar',            photo_url: 'https://ca-times.brightspotcdn.com/dims4/default/b3c57dc/2147483647/strip/true/crop/8420x5613%2B0%2B0/resize/1200x800%21/quality/75/?url=https%3A%2F%2Fcalifornia-times-brightspot.s3.amazonaws.com%2Fd4%2F5f%2F42f0f55e436392525a9ee5ff41b8%2F1497469-et-5-star-bar-3862.jpg' },
+  { venue_name: 'Lost',                  tag: 'Rooftop · Tacos',              active: 'yes', description: 'Mexico City-inspired rooftop cocktail bar with tacos, DJs, and skyline views.',                       address: '718 S Hill St Rooftop, Los Angeles, CA 90014',      hours_summary: 'Fri-Sat 8PM-late; Sat brunch 11AM-3PM; Sun 3PM-9PM',         instagram: '@getlostdtla',         photo_url: 'https://platform.la.eater.com/wp-content/uploads/sites/26/chorus/uploads/chorus_asset/file/25639247/240916___Lost_Bar__Shelby_Moore____240916___Lost_Bar52270.jpg?quality=90&strip=all&w=2400' },
+  { venue_name: 'The Mayan',             tag: 'Theater · Nightclub',          active: 'yes', description: 'Historic Mayan Revival theater and nightclub space with large-format production.',                    address: '1038 S Hill St, Los Angeles, CA 90015',             hours_summary: 'Sun-Thu closed; Fri-Sat 9:30PM-2AM',                          instagram: '@mayanla',             photo_url: 'https://mayanmusicvenue.com/wp-content/uploads/2026/02/crowd_purple_lit_stage_digital_visuals.jpg' },
+  { venue_name: "Clifton's Republic",    tag: 'Landmark · Immersive',         active: 'verify', description: 'Immersive forest-themed DTLA landmark.',                                                          address: '648 S Broadway, Los Angeles, CA 90014',             hours_summary: 'Verify before publishing',                                    instagram: '@cliftonsrepublic',    photo_url: '' },
 ]
 
 const GENRES = [
@@ -1603,6 +1616,45 @@ function extractTeams(item) {
   return []
 }
 
+function CliftonTeaserCard({ item }) {
+  return (
+    <div style={{
+      background: 'var(--card-bg)',
+      border: '1px solid rgba(255,179,0,.5)',
+      borderRadius: 4,
+      overflow: 'hidden',
+      animation: 'clifton-glow 2.4s ease-in-out infinite alternate',
+    }}>
+      <div style={{ padding: '12px 14px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span style={{ fontFamily: 'var(--font-label)', fontSize: 10, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--gold)' }}>
+          🔒 Announcing Soon
+        </span>
+        {item.match_stage && (
+          <span style={{ fontFamily: 'var(--font-label)', fontSize: 10, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', padding: '3px 8px', borderRadius: 2, background: 'rgba(255,179,0,.12)', color: 'var(--gold)' }}>
+            {item.match_stage}
+          </span>
+        )}
+      </div>
+      <div style={{ padding: '16px 14px 8px', textAlign: 'center' }}>
+        {item.team_flags && <div style={{ fontSize: 30, marginBottom: 8 }}>{item.team_flags}</div>}
+        <div style={{ fontFamily: 'var(--font-heading)', fontSize: 'clamp(15px, 4vw, 20px)', color: 'var(--cream)', lineHeight: 1.1, marginBottom: 12 }}>
+          {item.match_name}
+        </div>
+      </div>
+      <div style={{ padding: '0 14px 14px', borderTop: '1px solid rgba(255,255,255,.06)', paddingTop: 10 }}>
+        {item.date && (
+          <div style={{ fontFamily: 'var(--font-label)', fontSize: 13, color: 'var(--muted)', marginBottom: 4 }}>
+            📅 {formatDate(item.date)}{item.time ? ` · ${item.time}` : ''}
+          </div>
+        )}
+        <div style={{ fontFamily: 'var(--font-label)', fontSize: 12, color: 'rgba(255,179,0,.6)', fontStyle: 'italic' }}>
+          📍 Venue announcement coming soon
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function WatchFestPage({ data, loading }) {
   const [teamFilter, setTeamFilter] = useState('All')
 
@@ -1614,6 +1666,14 @@ function WatchFestPage({ data, loading }) {
     if (!isUpcoming(item)) return false
     return true
   }) : [], [data.watchfest])
+
+  const cliftonTeasers = useMemo(() => Array.isArray(data.watchfest)
+    ? data.watchfest.filter(item =>
+        isFlagshipItem(item) &&
+        !isActiveItem(item.active) &&
+        (item.venue || '').toLowerCase().includes('clifton')
+      )
+    : [], [data.watchfest])
 
   const flagship = activeEvents.find(isFlagshipItem)
 
@@ -1756,6 +1816,18 @@ function WatchFestPage({ data, loading }) {
               ) : (
                 <button className="btn btn-outline-blue">Ticket Link Coming Soon</button>
               )}
+            </div>
+          )}
+
+          {/* Clifton teaser cards — flagship but not yet announced */}
+          {!loading && cliftonTeasers.length > 0 && (
+            <div style={{ marginBottom: 36 }}>
+              <div style={{ fontFamily: 'var(--font-label)', fontSize: 11, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--gold)', borderBottom: '1px solid rgba(255,179,0,.2)', paddingBottom: 8, marginBottom: 20 }}>
+                Coming Soon
+              </div>
+              <div className="events-grid">
+                {cliftonTeasers.map((item, i) => <CliftonTeaserCard key={i} item={item} />)}
+              </div>
             </div>
           )}
 
