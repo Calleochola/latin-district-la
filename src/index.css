@@ -149,9 +149,12 @@ ul { list-style: none; }
 .event-card__image {
   position: relative;
   width: 100%;
-  padding-top: 125%; /* match carousel 4:5 ratio */
+  padding-top: 100%; /* square on mobile, taller on desktop */
   overflow: hidden;
   background: #0a0a1a;
+}
+@media (min-width: 600px) {
+  .event-card__image { padding-top: 125%; }
 }
 .event-card__image img {
   position: absolute;
@@ -167,15 +170,21 @@ ul { list-style: none; }
 }
 .event-card__overlay-text {
   position: absolute;
-  bottom: 12px;
-  left: 12px;
-  right: 12px;
+  bottom: 6px;
+  left: 8px;
+  right: 8px;
+}
+@media (min-width: 600px) {
+  .event-card__overlay-text { bottom: 12px; left: 12px; right: 12px; }
 }
 .event-card__name {
   font-family: var(--font-heading);
-  font-size: 22px;
+  font-size: 14px;
   line-height: 1.1;
   color: #fff;
+}
+@media (min-width: 600px) {
+  .event-card__name { font-size: 22px; }
 }
 .event-card__meta {
   font-family: var(--font-label);
@@ -183,7 +192,8 @@ ul { list-style: none; }
   color: var(--blue);
   margin-top: 4px;
 }
-.event-card__body { padding: 16px; margin-top: auto; }
+.event-card__body { padding: 10px; margin-top: auto; }
+@media (min-width: 600px) { .event-card__body { padding: 16px; } }
 .event-card__badge {
   display: inline-block;
   font-family: var(--font-label);
@@ -261,8 +271,8 @@ ul { list-style: none; }
 /* ── Grids ──────────────────────────────────────────── */
 .events-grid {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 24px;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
 }
 .venues-grid {
   display: grid;
@@ -271,7 +281,7 @@ ul { list-style: none; }
 }
 
 @media (min-width: 600px) {
-  .events-grid { grid-template-columns: repeat(2, 1fr); }
+  .events-grid { gap: 24px; }
   .venues-grid { grid-template-columns: repeat(2, 1fr); }
 }
 @media (min-width: 1024px) {
@@ -1114,10 +1124,6 @@ ul { list-style: none; }
 }
 .match-card:hover { transform: translateY(-3px); box-shadow: 0 10px 32px rgba(0,200,83,.12); }
 .match-card.featured { border-color: var(--gold); box-shadow: 0 0 20px rgba(255,179,0,.12); }
-@keyframes clifton-glow {
-  from { box-shadow: 0 0 18px rgba(255,179,0,.15), 0 0 40px rgba(255,179,0,.06); border-color: rgba(255,179,0,.4); }
-  to   { box-shadow: 0 0 32px rgba(255,179,0,.35), 0 0 64px rgba(255,179,0,.15); border-color: rgba(255,179,0,.85); }
-}
 .match-card__header {
   padding: 12px 16px 0;
   display: flex;

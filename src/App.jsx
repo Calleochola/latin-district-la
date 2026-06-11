@@ -1669,44 +1669,6 @@ function extractTeams(item) {
   return []
 }
 
-function CliftonTeaserCard({ item }) {
-  return (
-    <div style={{
-      background: 'var(--card-bg)',
-      border: '1px solid rgba(255,179,0,.5)',
-      borderRadius: 4,
-      overflow: 'hidden',
-      animation: 'clifton-glow 2.4s ease-in-out infinite alternate',
-    }}>
-      <div style={{ padding: '12px 14px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span style={{ fontFamily: 'var(--font-label)', fontSize: 10, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--gold)' }}>
-          🔒 Announcing Soon
-        </span>
-        {item.match_stage && (
-          <span style={{ fontFamily: 'var(--font-label)', fontSize: 10, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', padding: '3px 8px', borderRadius: 2, background: 'rgba(255,179,0,.12)', color: 'var(--gold)' }}>
-            {item.match_stage}
-          </span>
-        )}
-      </div>
-      <div style={{ padding: '16px 14px 8px', textAlign: 'center' }}>
-        {item.team_flags && <div style={{ fontSize: 30, marginBottom: 8 }}>{item.team_flags}</div>}
-        <div style={{ fontFamily: 'var(--font-heading)', fontSize: 'clamp(15px, 4vw, 20px)', color: 'var(--cream)', lineHeight: 1.1, marginBottom: 12 }}>
-          {item.match_name}
-        </div>
-      </div>
-      <div style={{ padding: '0 14px 14px', borderTop: '1px solid rgba(255,255,255,.06)', paddingTop: 10 }}>
-        {item.date && (
-          <div style={{ fontFamily: 'var(--font-label)', fontSize: 13, color: 'var(--muted)', marginBottom: 4 }}>
-            📅 {formatDate(item.date)}{item.time ? ` · ${item.time}` : ''}
-          </div>
-        )}
-        <div style={{ fontFamily: 'var(--font-label)', fontSize: 12, color: 'rgba(255,179,0,.6)', fontStyle: 'italic' }}>
-          📍 Venue announcement coming soon
-        </div>
-      </div>
-    </div>
-  )
-}
 
 function WatchFestPage({ data, loading }) {
   const [teamFilter, setTeamFilter] = useState('All')
@@ -1720,15 +1682,7 @@ function WatchFestPage({ data, loading }) {
     return true
   }) : [], [data.watchfest])
 
-  const cliftonTeasers = useMemo(() => Array.isArray(data.watchfest)
-    ? data.watchfest.filter(item =>
-        isFlagshipItem(item) &&
-        !isActiveItem(item.active) &&
-        (item.venue || '').toLowerCase().includes('clifton')
-      )
-    : [], [data.watchfest])
-
-  const flagship = activeEvents.find(isFlagshipItem)
+const flagship = activeEvents.find(isFlagshipItem)
 
   const nextEvent = useMemo(() =>
     activeEvents
@@ -1873,17 +1827,6 @@ function WatchFestPage({ data, loading }) {
           )}
 
           {/* Clifton teaser cards — flagship but not yet announced */}
-          {!loading && cliftonTeasers.length > 0 && (
-            <div style={{ marginBottom: 36 }}>
-              <div style={{ fontFamily: 'var(--font-label)', fontSize: 11, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--gold)', borderBottom: '1px solid rgba(255,179,0,.2)', paddingBottom: 8, marginBottom: 20 }}>
-                Coming Soon
-              </div>
-              <div className="events-grid">
-                {cliftonTeasers.map((item, i) => <CliftonTeaserCard key={i} item={item} />)}
-              </div>
-            </div>
-          )}
-
           {/* Team / country filter chips */}
           {!loading && allTeams.length > 1 && (
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 28 }}>
