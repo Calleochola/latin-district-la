@@ -840,6 +840,50 @@ function SkeletonCard() {
   )
 }
 
+function MatchCarousel({ items, renderItem }) {
+  const [page, setPage] = useState(0)
+  const perPage = 3
+  const totalPages = Math.ceil(items.length / perPage)
+  const visible = items.slice(page * perPage, page * perPage + perPage)
+
+  return (
+    <div>
+      <div className="events-grid">
+        {visible.map((item, i) => renderItem(item, page * perPage + i))}
+      </div>
+      {totalPages > 1 && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 20, marginTop: 28 }}>
+          <button
+            onClick={() => setPage(p => Math.max(0, p - 1))}
+            disabled={page === 0}
+            style={{
+              fontFamily: 'var(--font-label)', fontSize: 13, fontWeight: 700,
+              letterSpacing: '.08em', padding: '10px 22px', borderRadius: 2, cursor: page === 0 ? 'default' : 'pointer',
+              border: '1px solid rgba(255,179,0,.3)', background: 'rgba(255,179,0,.08)',
+              color: page === 0 ? 'rgba(255,179,0,.3)' : 'var(--gold)',
+              transition: 'all .15s',
+            }}
+          >← Prev</button>
+          <span style={{ fontFamily: 'var(--font-label)', fontSize: 12, color: 'var(--muted)', letterSpacing: '.1em' }}>
+            {page + 1} / {totalPages}
+          </span>
+          <button
+            onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
+            disabled={page === totalPages - 1}
+            style={{
+              fontFamily: 'var(--font-label)', fontSize: 13, fontWeight: 700,
+              letterSpacing: '.08em', padding: '10px 22px', borderRadius: 2, cursor: page === totalPages - 1 ? 'default' : 'pointer',
+              border: '1px solid rgba(255,179,0,.3)', background: 'rgba(255,179,0,.08)',
+              color: page === totalPages - 1 ? 'rgba(255,179,0,.3)' : 'var(--gold)',
+              transition: 'all .15s',
+            }}
+          >Next →</button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Nav ─────────────────────────────────────────────────────────────────────
 
 const NAV_LINKS = [
@@ -1191,17 +1235,14 @@ function HomePage({ data, loading }) {
         <div className="container">
           <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 48, alignItems: 'center' }}>
             <div style={{ textAlign: 'center' }}>
-              <div className="counter-number neon-blue" style={{ color: 'var(--blue)' }}>13</div>
-              <div style={{ fontFamily: 'var(--font-label)', fontSize: 14, color: 'var(--muted)', letterSpacing: '.1em', textTransform: 'uppercase', marginTop: 8 }}>
-                Venues · One District
-              </div>
+              <div className="counter-number neon-blue" style={{ color: 'var(--blue)', fontSize: 'clamp(28px, 6vw, 48px)', lineHeight: 1.2 }}>DOWNTOWN<br />ONE STOP SPOT</div>
             </div>
             <div>
               <div className="section-tag">About</div>
               <h2 className="section-heading" style={{ marginBottom: 24 }}>ONE DISTRICT.<br />ALL NIGHT.</h2>
               <ul style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 {[
-                  '13 venues across DTLA all participating on Friday nights',
+                  'Multiple venues across DTLA all participating on Friday nights',
                   'Live DJs spinning Reggaeton, Salsa, Cumbia, Latin House & more',
                   'A community collective bringing Latin music to Downtown Los Angeles',
                   'Watch Fests: Major soccer & boxing matches on big screens',
@@ -1310,10 +1351,10 @@ function HomePage({ data, loading }) {
 // ── EVENTS PAGE ─────────────────────────────────────────────────────────────
 
 const FILTER_OPTIONS = [
-  { value: 'today',      label: 'Today' },
-  { value: 'all',        label: 'All Events' },
-  { value: 'Watch Fest', label: 'Watch Fest' },
-  { value: 'calendar',   label: 'Calendar', to: '/calendar' },
+  { value: 'today',    label: 'Today' },
+  { value: 'thisweek', label: 'This Week' },
+  { value: 'all',      label: 'All Events' },
+  { value: 'calendar', label: 'Calendar', to: '/calendar' },
 ]
 
 // Returns the canonical site_tab for an event row.
@@ -1368,12 +1409,24 @@ function EventsPage({ data, loading }) {
       return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate()
     }
 
+    if (filter === 'thisweek') {
+      const d = parseEventDate(e.date)
+      if (!d) return false
+      const now = new Date()
+      const sevenDaysLater = new Date(now); sevenDaysLater.setDate(now.getDate() + 7)
+      return d >= now && d <= sevenDaysLater
+    }
+
     if (!isUpcoming(e)) return false
 
     if (filter === 'all') return true
 
     // site_tab-based tab matching
     return getSiteTab(e) === filter
+  }).sort((a, b) => {
+    const da = parseEventDate(a.date) || new Date(9999, 0)
+    const db = parseEventDate(b.date) || new Date(9999, 0)
+    return da - db
   })
 
   return (
@@ -1863,9 +1916,10 @@ function WatchFestPage({ data, loading }) {
                 <div style={{ fontFamily: 'var(--font-label)', fontSize: 11, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--gold)', borderBottom: '1px solid rgba(255,179,0,.2)', paddingBottom: 8, marginBottom: 20 }}>
                   {label}
                 </div>
-                <div className="events-grid">
-                  {items.map((item, i) => <WatchFestCard key={i} item={item} />)}
-                </div>
+                <MatchCarousel
+                  items={items}
+                  renderItem={(item, i) => <WatchFestCard key={i} item={item} />}
+                />
               </div>
             ))
           ) : (
