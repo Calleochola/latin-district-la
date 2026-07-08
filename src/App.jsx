@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { createPortal } from 'react-dom'
-import { BrowserRouter, Routes, Route, Link, NavLink, useNavigate, useLocation, useSearchParams } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Link, NavLink, Navigate, useNavigate, useLocation, useSearchParams } from 'react-router-dom'
 import MediaCarousel from './MediaCarousel'
 import Resources from './Resources'
 import SubmitEventPage from './pages/SubmitEventPage'
@@ -62,7 +62,6 @@ const EVENT_TYPE_OPTIONS = [
 
 const BADGE_COLORS = {
   friday_night: { bg: 'rgba(255,23,68,.2)',   color: '#FF1744', label: 'Friday Night' },
-  watch_fest:   { bg: 'rgba(255,179,0,.2)',   color: '#FFB300', label: 'Watch Fest' },
   crawl:        { bg: 'rgba(213,0,249,.2)',   color: '#D500F9', label: 'Bar Crawl' },
   special:      { bg: 'rgba(0,229,255,.2)',   color: '#00E5FF', label: 'Special' },
 }
@@ -87,8 +86,8 @@ const STATUS_COLORS = {
 //      flyer_image_url / venue_image_url columns.
 //   4. Admin sets status = approved → row goes live on the site.
 //
-// If flyer_image_url or venue_image_url is empty, EventCard / WatchFest cards
-// already skip the image block rather than rendering a broken <img>.
+// If flyer_image_url or venue_image_url is empty, EventCard
+// already skips the image block rather than rendering a broken <img>.
 // convertDriveUrl handles the common Drive /d/{id}/ pattern as a best-effort
 // conversion for legacy rows — do not rely on it for new submissions.
 
@@ -122,15 +121,14 @@ function isActiveItem(active) {
 }
 
 // Returns true if the event is still visible (or if date is unparseable — fail-safe).
-// For WatchFest items, prefers kickoff_datetime; falls back to date-based rule.
-// For all other events: keep visible until end of the day AFTER the event date.
+// Keep visible until end of the day AFTER the event date.
 //   e.g. event on May 5 → visible all day May 6, hidden starting May 7
-// Do NOT apply the +1 day extension to WatchFest (kickoff_datetime path is unchanged).
 function isUpcoming(item) {
   try {
     if (item.kickoff_datetime) {
       const dt = new Date(item.kickoff_datetime)
-      if (!isNaN(dt.getTime())) return dt.getTime() > Date.now()
+      const GRACE_MS = 5 * 60 * 60 * 1000 // 5 hours — keep visible after kickoff for door ticket claims
+      if (!isNaN(dt.getTime())) return dt.getTime() + GRACE_MS > Date.now()
     }
     if (!item.date) return true
     const d = parseEventDate(item.date)
@@ -267,37 +265,6 @@ function useCountdown(dateStr) {
   return timeLeft
 }
 
-// ── Kickoff status helpers ───────────────────────────────────────────────────
-// Uses kickoff_datetime to derive one of: 'upcoming' | 'live' | 'final'
-
-const MATCH_DURATION_MS = 110 * 60 * 1000  // ~110 min window for "LIVE NOW"
-
-function computeKickoffStatus(kickoffDatetime) {
-  if (!kickoffDatetime) return null
-  const kickoff = new Date(kickoffDatetime)
-  if (isNaN(kickoff.getTime())) return null
-  const diff = kickoff.getTime() - Date.now()
-  if (diff > 0) return {
-    state: 'upcoming',
-    days:    Math.floor(diff / 86400000),
-    hours:   Math.floor((diff % 86400000) / 3600000),
-    minutes: Math.floor((diff % 3600000)  / 60000),
-  }
-  if (diff > -MATCH_DURATION_MS) return { state: 'live' }
-  return { state: 'final' }
-}
-
-function useKickoffStatus(kickoffDatetime) {
-  const [s, setS] = useState(() => computeKickoffStatus(kickoffDatetime))
-  useEffect(() => {
-    setS(computeKickoffStatus(kickoffDatetime))
-    if (!kickoffDatetime) return
-    const id = setInterval(() => setS(computeKickoffStatus(kickoffDatetime)), 10000)
-    return () => clearInterval(id)
-  }, [kickoffDatetime])
-  return s
-}
-
 // ── Events Sheet — target column schema ─────────────────────────────────────
 // Existing rows without a status column are shown by default (backwards compatible).
 // New submissions via Google Form should land with status = pending and only
@@ -313,7 +280,7 @@ function useKickoffStatus(kickoffDatetime) {
 // end_time           | HH:MM AM/PM
 // venue              | venue name string
 // address            | street address
-// category           | friday_night | watch_fest | crawl | special
+// category           | friday_night | crawl | special
 // description        | 2–3 sentence event description
 // ticket_link        | URL
 // video_url          | YouTube or TikTok URL
@@ -323,7 +290,7 @@ function useKickoffStatus(kickoffDatetime) {
 // submitted_at       | ISO timestamp
 // notes_internal     | admin-only notes, never rendered on site
 //
-// STATUS MODERATION FILTER (applied in EventsPage and WatchFestPage):
+// STATUS MODERATION FILTER (applied in EventsPage):
 //   if row.status field exists → only show when status === 'approved' (case-insensitive)
 //   if row has no status field → show as before (legacy rows stay visible)
 
@@ -369,7 +336,7 @@ function useSheets() {
   const cached = isAdminRefresh ? null : (_freshMemCache() || _readStorage())
 
   const [data, setData] = useState(
-    cached ? cached.data : { events: [], venues: [], watchfest: [], barcrawl: [] }
+    cached ? cached.data : { events: [], venues: [], barcrawl: [] }
   )
   const [loading, setLoading] = useState(!cached)
   const [error, setError] = useState(null)
@@ -388,9 +355,6 @@ function useSheets() {
       fetch(sheetsUrl)
         .then(r => r.json())
         .then(d => {
-          if (!Array.isArray(d.watchfest) || d.watchfest.length === 0) {
-            console.warn('[sheets] watchfest missing or empty in response', d)
-          }
           const merged = { ...stored.data, ...d }
           _writeCache(merged)
           setData(merged)
@@ -404,10 +368,7 @@ function useSheets() {
       .then(r => r.json())
       .then(d => {
         // Merge into defaults so a partial/error response never nukes an array key
-        const merged = { events: [], venues: [], watchfest: [], barcrawl: [], ...d }
-        if (!Array.isArray(d.watchfest) || d.watchfest.length === 0) {
-          console.warn('[sheets] watchfest missing or empty in response', d)
-        }
+        const merged = { events: [], venues: [], barcrawl: [], ...d }
         _writeCache(merged)
         setData(merged)
         setLoading(false)
@@ -681,151 +642,11 @@ function isSpotlightItem(item) {
   return v === 'true' || v === 'yes'
 }
 
-function KickoffStatus({ kickoffDatetime }) {
-  const s = useKickoffStatus(kickoffDatetime)
-  if (!s) return null
-  if (s.state === 'live') return (
-    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: 'var(--font-label)', fontSize: 12, fontWeight: 700, letterSpacing: '.1em', color: '#00C853', background: 'rgba(0,200,83,.12)', border: '1px solid rgba(0,200,83,.3)', borderRadius: 2, padding: '4px 10px', marginBottom: 8 }}>
-      <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#00C853', display: 'inline-block', animation: 'pulse-live 1.5s ease-in-out infinite' }} />
-      🔴 LIVE NOW
-    </div>
-  )
-  if (s.state === 'final') return (
-    <div style={{ fontFamily: 'var(--font-label)', fontSize: 12, fontWeight: 700, letterSpacing: '.1em', color: 'var(--muted)', background: 'rgba(90,90,138,.15)', border: '1px solid rgba(90,90,138,.25)', borderRadius: 2, padding: '4px 10px', display: 'inline-block', marginBottom: 8 }}>
-      FINAL
-    </div>
-  )
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 8, fontFamily: 'var(--font-label)', fontSize: 12, color: 'var(--muted)' }}>
-      <span style={{ color: 'var(--gold)', fontWeight: 700, letterSpacing: '.06em' }}>KICKOFF IN</span>
-      {s.days > 0 && <span style={{ color: 'var(--cream)', fontWeight: 700 }}>{s.days}d</span>}
-      <span style={{ color: 'var(--cream)', fontWeight: 700 }}>{String(s.hours).padStart(2,'0')}h</span>
-      <span style={{ color: 'var(--cream)', fontWeight: 700 }}>{String(s.minutes).padStart(2,'0')}m</span>
-    </div>
-  )
-}
-
-function getWatchfestCategory(item) {
-  const raw = (item.category || item.event_type || '').toLowerCase().trim()
-  if (raw.includes('dodger')) return 'dodgers'
-  if (raw.includes('world')) return 'worldcup'
-  if ((item.match_name || '').toLowerCase().includes('dodger')) return 'dodgers'
-  return 'worldcup'
-}
-
 function getVideoType(url) {
   if (!url) return null
   if (url.includes('youtube.com') || url.includes('youtu.be')) return 'youtube'
   if (url.includes('tiktok.com')) return 'tiktok'
   return null
-}
-
-function WatchFestCard({ item }) {
-  const isDodgers = getWatchfestCategory(item) === 'dodgers'
-  const accentColor = isDodgers ? 'var(--blue)' : 'var(--gold)'
-  const badgeBg = isDodgers ? 'rgba(0,229,255,.18)' : 'rgba(255,179,0,.18)'
-  const status = item.status || ''
-  const sc = STATUS_COLORS[status] || { bg: 'rgba(90,90,138,.2)', color: 'var(--muted)' }
-  const title = item.match_name || item.event_name || 'Watch Fest Event'
-  const crowdLevels = ['Low', 'Medium', 'High', 'Packed']
-  const crowdColors = { Low: '#00C853', Medium: '#FFB300', High: '#FF6D00', Packed: '#FF1744' }
-
-  // Build carousel: flyer first, venue second, video last. Apply Drive URL conversion to images.
-  const videoType = getVideoType(item.video_url)
-  const mediaEntries = []
-  if (item.flyer_image_url)             mediaEntries.push({ url: convertDriveUrl(item.flyer_image_url), type: 'image' })
-  if (item.venue_image_url)             mediaEntries.push({ url: convertDriveUrl(item.venue_image_url), type: 'image' })
-  if (item.video_url && videoType)      mediaEntries.push({ url: item.video_url,                      type: videoType })
-  const mediaUrls  = mediaEntries.map(m => m.url).join('|')
-  const mediaTypes = mediaEntries.map(m => m.type).join('|')
-
-  return (
-    <div className="event-card">
-      {mediaEntries.length > 0 && (
-        <MediaCarousel mediaUrls={mediaUrls} mediaTypes={mediaTypes} />
-      )}
-      <div className="event-card__body">
-        {/* Title hierarchy:
-            With team_flags → flags are the large hero heading; match_name is a small subtitle below.
-            Without team_flags → match_name / event_name is the regular heading (unchanged). */}
-        {item.team_flags && (
-          <div style={{ fontFamily: 'var(--font-heading)', fontSize: 'clamp(26px, 7vw, 38px)', color: 'var(--cream)', lineHeight: 1, marginBottom: 4, letterSpacing: '0.06em' }}>
-            {item.team_flags}
-          </div>
-        )}
-        {item.match_stage && (
-          <div style={{ fontFamily: 'var(--font-label)', fontSize: 11, letterSpacing: '.1em', textTransform: 'uppercase', color: accentColor, marginBottom: 4 }}>
-            {item.match_stage}
-          </div>
-        )}
-        {item.team_flags ? (
-          (item.match_name || item.event_name) ? (
-            <div style={{ fontFamily: 'var(--font-label)', fontSize: 13, color: 'var(--muted)', letterSpacing: '.02em', marginBottom: 8 }}>
-              {item.match_name || item.event_name}
-            </div>
-          ) : null
-        ) : (
-          <div style={{ fontFamily: 'var(--font-heading)', fontSize: 'clamp(15px, 4vw, 20px)', color: 'var(--cream)', lineHeight: 1.1, marginBottom: 8 }}>
-            {title}
-          </div>
-        )}
-
-        {/* Badges */}
-        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', marginBottom: 8 }}>
-          <span className="event-card__badge" style={{ background: badgeBg, color: accentColor }}>
-            {isDodgers ? 'Dodger Fest' : 'Goal City'}
-          </span>
-          {status && (
-            <span className="status-badge" style={{ background: sc.bg, color: sc.color }}>{status}</span>
-          )}
-          {isFlagshipItem(item) && (
-            <span className="status-badge" style={{ background: 'rgba(255,179,0,.12)', color: 'var(--gold)' }}>★ Flagship</span>
-          )}
-        </div>
-
-        {/* Kickoff countdown / LIVE NOW / FINAL */}
-        <KickoffStatus kickoffDatetime={item.kickoff_datetime} />
-
-        {/* Date · time · venue · tailgate */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginBottom: 8, fontFamily: 'var(--font-label)', fontSize: 13, color: 'var(--muted)' }}>
-          {(item.date || item.time) && (
-            <span>📅 {formatDate(item.date)}{item.time ? ` · ${item.time}` : ''}</span>
-          )}
-          {item.venue && <span>📍 {item.venue}</span>}
-          {item.tailgate_time && <span>🎉 Tailgate {item.tailgate_time}</span>}
-        </div>
-
-        {/* Crowd level indicator */}
-        {item.crowd_level && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 8 }}>
-            <span style={{ fontFamily: 'var(--font-label)', fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--muted)' }}>Crowd</span>
-            {crowdLevels.map((lvl, i) => (
-              <div key={lvl} style={{ width: 10, height: 10, borderRadius: 2, background: crowdLevels.indexOf(item.crowd_level) >= i ? (crowdColors[item.crowd_level] || 'var(--muted)') : 'rgba(255,255,255,.1)' }} />
-            ))}
-            <span style={{ fontFamily: 'var(--font-label)', fontSize: 11, color: 'var(--cream)' }}>{item.crowd_level}</span>
-          </div>
-        )}
-
-        {/* Description */}
-        {item.description && (
-          <p style={{ fontFamily: 'var(--font-label)', fontSize: 13, color: 'var(--muted)', lineHeight: 1.5, marginBottom: 10 }}>
-            {item.description}
-          </p>
-        )}
-
-        {/* Ticket CTA */}
-        {item.ticket_link ? (
-          <a href={item.ticket_link} target="_blank" rel="noopener noreferrer" className="btn btn-red w-full" style={{ marginTop: 4, fontSize: 13, padding: '10px 16px' }} onClick={() => trackTicketClick(item, 'watchfest')}>
-            Get Tickets →
-          </a>
-        ) : (
-          <button className="btn btn-outline-blue w-full" style={{ marginTop: 4, fontSize: 13, padding: '10px 16px' }}>
-            Ticket Link Coming Soon
-          </button>
-        )}
-      </div>
-    </div>
-  )
 }
 
 function SkeletonCard() {
@@ -840,55 +661,10 @@ function SkeletonCard() {
   )
 }
 
-function MatchCarousel({ items, renderItem }) {
-  const [page, setPage] = useState(0)
-  const perPage = 3
-  const totalPages = Math.ceil(items.length / perPage)
-  const visible = items.slice(page * perPage, page * perPage + perPage)
-
-  return (
-    <div>
-      <div className="events-grid">
-        {visible.map((item, i) => renderItem(item, page * perPage + i))}
-      </div>
-      {totalPages > 1 && (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 20, marginTop: 28 }}>
-          <button
-            onClick={() => setPage(p => Math.max(0, p - 1))}
-            disabled={page === 0}
-            style={{
-              fontFamily: 'var(--font-label)', fontSize: 13, fontWeight: 700,
-              letterSpacing: '.08em', padding: '10px 22px', borderRadius: 2, cursor: page === 0 ? 'default' : 'pointer',
-              border: '1px solid rgba(255,179,0,.3)', background: 'rgba(255,179,0,.08)',
-              color: page === 0 ? 'rgba(255,179,0,.3)' : 'var(--gold)',
-              transition: 'all .15s',
-            }}
-          >← Prev</button>
-          <span style={{ fontFamily: 'var(--font-label)', fontSize: 12, color: 'var(--muted)', letterSpacing: '.1em' }}>
-            {page + 1} / {totalPages}
-          </span>
-          <button
-            onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
-            disabled={page === totalPages - 1}
-            style={{
-              fontFamily: 'var(--font-label)', fontSize: 13, fontWeight: 700,
-              letterSpacing: '.08em', padding: '10px 22px', borderRadius: 2, cursor: page === totalPages - 1 ? 'default' : 'pointer',
-              border: '1px solid rgba(255,179,0,.3)', background: 'rgba(255,179,0,.08)',
-              color: page === totalPages - 1 ? 'rgba(255,179,0,.3)' : 'var(--gold)',
-              transition: 'all .15s',
-            }}
-          >Next →</button>
-        </div>
-      )}
-    </div>
-  )
-}
-
 // ── Nav ─────────────────────────────────────────────────────────────────────
 
 const NAV_LINKS = [
   { to: '/',             label: 'Home' },
-  { to: '/watchfest',    label: 'Watch Fest' },
   { to: '/events',       label: 'Events' },
   { to: '/calendar',     label: 'Calendar' },
   { to: '/friday-night', label: 'Friday Night' },
@@ -978,11 +754,9 @@ function HomePage({ data, loading }) {
     }
   }, [])
 
-  const [weekendTab, setWeekendTab] = useState('watchparties')
   const { events: weekendEvents, isWeekend } = getThisWeekendEvents(data.events)
   const spotlightEvent = data.events.find(e => isActiveItem(e.active) && isSpotlightItem(e) && isUpcoming(e))
   const flagshipEvent = data.events.find(e => isActiveItem(e.active) && isFlagshipItem(e) && isUpcoming(e))
-  const flagshipWatchFest = (data.watchfest || []).find(e => isActiveItem(e.active) && isFlagshipItem(e) && isUpcoming(e))
   const venueStrip = (data.venues.length > 0 ? data.venues : FALLBACK_VENUES)
     .filter(v => isActiveItem(v.active))
     .slice(0, 8)
@@ -1027,7 +801,7 @@ function HomePage({ data, loading }) {
           <p className="hero__sub">Multiple venues. One district. Los Angeles.</p>
           <div className="hero__buttons">
             <Link to="/events" className="btn btn-red">See This Week →</Link>
-            <Link to="/watchfest" className="btn btn-gold">Watch Parties →</Link>
+            <Link to="/friday-night" className="btn btn-outline-blue">Friday Night →</Link>
           </div>
         </div>
       </section>
@@ -1097,136 +871,30 @@ function HomePage({ data, loading }) {
         </>
       )}
 
-      {/* ── Flagship Watch Fest Event ── */}
-      {!loading && flagshipWatchFest && (
-        <>
-          <section className="section" style={{ background: 'linear-gradient(135deg, rgba(255,179,0,.05), rgba(0,0,0,0))' }}>
-            <div className="container">
-              <span style={{ fontFamily: 'var(--font-label)', fontSize: 11, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--gold)', background: 'rgba(255,179,0,.12)', border: '1px solid rgba(255,179,0,.3)', borderRadius: 2, padding: '4px 10px', display: 'inline-block', marginBottom: 16 }}>
-                ⚽ Goal City — Watch Fest
-              </span>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 28, alignItems: 'center' }}>
-                {flagshipWatchFest.flyer_image_url && (
-                  <div style={{ borderRadius: 4, overflow: 'hidden', maxHeight: 360, position: 'relative' }}>
-                    <img src={flagshipWatchFest.flyer_image_url} alt={flagshipWatchFest.match_name || 'Watch Fest'} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', opacity: 0, transition: 'opacity .35s ease' }} onLoad={e => { e.target.style.opacity = '1' }} />
-                    <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(6,6,15,.85) 0%, transparent 60%)' }} />
-                  </div>
-                )}
-                <div>
-                  {flagshipWatchFest.team_flags && (
-                    <div style={{ fontSize: 28, marginBottom: 6 }}>{flagshipWatchFest.team_flags}</div>
-                  )}
-                  <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: 'clamp(28px, 7vw, 64px)', color: 'var(--cream)', lineHeight: 1, marginBottom: 8 }}>
-                    {flagshipWatchFest.match_name || flagshipWatchFest.event_name}
-                  </h2>
-                  {flagshipWatchFest.match_stage && (
-                    <div style={{ fontFamily: 'var(--font-label)', fontSize: 12, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: 10 }}>
-                      {flagshipWatchFest.match_stage}
-                    </div>
-                  )}
-                  <KickoffStatus kickoffDatetime={flagshipWatchFest.kickoff_datetime} />
-                  <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 20, fontFamily: 'var(--font-label)', fontSize: 14, color: 'var(--muted)' }}>
-                    {flagshipWatchFest.date && <span>📅 {formatDate(flagshipWatchFest.date)}{flagshipWatchFest.time ? ` · ${flagshipWatchFest.time}` : ''}</span>}
-                    {flagshipWatchFest.venue && <span>📍 {flagshipWatchFest.venue}</span>}
-                    {flagshipWatchFest.tailgate_time && <span>🎉 Tailgate {flagshipWatchFest.tailgate_time}</span>}
-                  </div>
-                  {flagshipWatchFest.ticket_link ? (
-                    <a href={flagshipWatchFest.ticket_link} target="_blank" rel="noopener noreferrer" className="btn btn-gold" onClick={() => trackTicketClick(flagshipWatchFest, 'watchfest')}>Get Tickets →</a>
-                  ) : (
-                    <Link to="/watchfest" className="btn btn-outline-blue">See Watch Fest →</Link>
-                  )}
-                </div>
+      {/* ── This Weekend ── */}
+      <section className="section">
+        <div className="container">
+          <div className="section-tag">This Weekend in DTLA</div>
+          <h2 className="section-heading">THIS WEEKEND IN DTLA</h2>
+          {loading ? (
+            <div className="events-grid">{[1,2,3].map(i => <SkeletonCard key={i} />)}</div>
+          ) : weekendEvents.length > 0 ? (
+            <>
+              <div className="events-grid content-reveal">
+                {weekendEvents.map((e, i) => <EventCard key={i} event={e} />)}
               </div>
-            </div>
-          </section>
-          <NeonDivider />
-        </>
-      )}
-
-      {/* ── This Weekend — Watch Parties / Events tabs ── */}
-      {(() => {
-        const upcomingWatchParties = (data.watchfest || [])
-          .filter(w => isActiveItem(w.active) && isUpcoming(w))
-          .sort((a, b) => {
-            const da = parseEventDate(a.kickoff_datetime || a.date) || 0
-            const db = parseEventDate(b.kickoff_datetime || b.date) || 0
-            return da - db
-          })
-          .slice(0, 3)
-        return (
-          <section className="section">
-            <div className="container">
-              <div className="section-tag">This Weekend in DTLA</div>
-              <h2 className="section-heading">THIS WEEKEND IN DTLA</h2>
-
-              {/* Tab switcher */}
-              <div style={{ display: 'flex', gap: 0, marginBottom: 28, marginTop: 4, borderBottom: '1px solid rgba(255,255,255,.08)' }}>
-                {[
-                  { id: 'watchparties', label: '⚽ Watch Parties', activeColor: 'var(--gold)', activeBorder: 'var(--gold)' },
-                  { id: 'events',       label: '🎉 Events',        activeColor: 'var(--blue)',  activeBorder: 'var(--blue)' },
-                ].map(tab => (
-                  <button
-                    key={tab.id}
-                    onClick={() => setWeekendTab(tab.id)}
-                    style={{
-                      fontFamily: 'var(--font-label)', fontSize: 13, fontWeight: 700,
-                      letterSpacing: '.08em', textTransform: 'uppercase',
-                      padding: '10px 20px', background: 'none', border: 'none',
-                      borderBottom: weekendTab === tab.id ? `2px solid ${tab.activeBorder}` : '2px solid transparent',
-                      color: weekendTab === tab.id ? tab.activeColor : 'var(--muted)',
-                      cursor: 'pointer', transition: 'all .15s', marginBottom: -1,
-                    }}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
+              <div style={{ textAlign: 'center', marginTop: 32 }}>
+                <Link to="/events" className="btn btn-outline-blue" onClick={() => window.scrollTo({ top: 0, behavior: 'instant' })}>View All Events →</Link>
               </div>
-
-              {/* Watch Parties tab */}
-              {weekendTab === 'watchparties' && (
-                loading ? (
-                  <div className="events-grid">{[1,2,3].map(i => <SkeletonCard key={i} />)}</div>
-                ) : upcomingWatchParties.length > 0 ? (
-                  <>
-                    <div className="events-grid content-reveal">
-                      {upcomingWatchParties.map((w, i) => <WatchFestCard key={i} item={w} />)}
-                    </div>
-                    <div style={{ textAlign: 'center', marginTop: 32 }}>
-                      <Link to="/watchfest" className="btn btn-gold" onClick={() => window.scrollTo({ top: 0, behavior: 'instant' })}>See All Watch Parties →</Link>
-                    </div>
-                  </>
-                ) : (
-                  <div className="empty-state">
-                    <div className="empty-state__icon">⚽</div>
-                    <p>Watch party schedule dropping soon — check back!</p>
-                  </div>
-                )
-              )}
-
-              {/* Events tab */}
-              {weekendTab === 'events' && (
-                loading ? (
-                  <div className="events-grid">{[1,2,3].map(i => <SkeletonCard key={i} />)}</div>
-                ) : weekendEvents.length > 0 ? (
-                  <>
-                    <div className="events-grid content-reveal">
-                      {weekendEvents.map((e, i) => <EventCard key={i} event={e} />)}
-                    </div>
-                    <div style={{ textAlign: 'center', marginTop: 32 }}>
-                      <Link to="/events" className="btn btn-outline-blue" onClick={() => window.scrollTo({ top: 0, behavior: 'instant' })}>View All Events →</Link>
-                    </div>
-                  </>
-                ) : (
-                  <div className="empty-state">
-                    <div className="empty-state__icon">🎉</div>
-                    <p>Events updating soon — follow @LatinDistrictLA for announcements</p>
-                  </div>
-                )
-              )}
+            </>
+          ) : (
+            <div className="empty-state">
+              <div className="empty-state__icon">🎉</div>
+              <p>Events updating soon — follow @LatinDistrictLA for announcements</p>
             </div>
-          </section>
-        )
-      })()}
+          )}
+        </div>
+      </section>
 
       <NeonDivider />
 
@@ -1245,7 +913,6 @@ function HomePage({ data, loading }) {
                   'Multiple venues across DTLA all participating on Friday nights',
                   'Live DJs spinning Reggaeton, Salsa, Cumbia, Latin House & more',
                   'A community collective bringing Latin music to Downtown Los Angeles',
-                  'Watch Fests: Major soccer & boxing matches on big screens',
                   'No cover at most venues — just show up and enjoy',
                   'Community built, locally owned, culturally authentic',
                 ].map((item, i) => (
@@ -1297,34 +964,6 @@ function HomePage({ data, loading }) {
           <Link to="/friday-night" className="btn btn-red">Explore Friday Night →</Link>
         </div>
       </section>
-
-      <NeonDivider />
-
-      {/* ── Watch Fest Band ── */}
-      <section className="band band-green">
-        <div className="container" style={{ textAlign: 'center' }}>
-          <div className="section-tag" style={{ color: 'var(--gold)' }}>Live Matches</div>
-          <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: 'clamp(48px, 12vw, 96px)', lineHeight: .95, color: 'var(--cream)', marginBottom: 16 }}>
-            WATCH<br /><span className="neon-gold" style={{ color: 'var(--gold)' }}>FEST</span>
-          </h2>
-          <p style={{ fontFamily: 'var(--font-label)', fontSize: 16, color: 'var(--muted)', maxWidth: 500, margin: '0 auto 32px', lineHeight: 1.5 }}>
-            Big screens. DJs all night. Drink specials. Every major match,
-            fight, and tournament — watched together.
-          </p>
-          <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
-            {data.watchfest.slice(0, 3).map((m, i) => (
-              <div key={i} style={{ background: 'rgba(255,179,0,.08)', border: '1px solid rgba(255,179,0,.2)', borderRadius: 4, padding: '12px 20px', textAlign: 'left' }}>
-                <div style={{ fontFamily: 'var(--font-heading)', fontSize: 18, color: 'var(--gold)' }}>{m.match_name}</div>
-                <div style={{ fontFamily: 'var(--font-label)', fontSize: 12, color: 'var(--muted)', marginTop: 4 }}>{m.date} · {m.venue}</div>
-              </div>
-            ))}
-          </div>
-          <div style={{ marginTop: 32 }}>
-            <Link to="/watchfest" className="btn btn-gold">See Schedule →</Link>
-          </div>
-        </div>
-      </section>
-
 
 
       {/* ── Collaborator CTA ── */}
@@ -1530,19 +1169,7 @@ function FridayNightPage({ data, loading }) {
     })
   , [data.events])
 
-  // WatchFest tab: active rows whose event date falls on a Friday (getDay() === 5)
-  const fridayWatchfest = useMemo(() =>
-    (data.watchfest || []).filter(w => {
-      if (!isActiveItem(w.active)) return false
-      const status = (w.status || '').toLowerCase()
-      if (status === 'cancelled' || status === 'rejected') return false
-      if (!isUpcoming(w)) return false
-      const d = parseEventDate(w.date)
-      return d !== null && d.getDay() === 5
-    })
-  , [data.watchfest])
-
-  const hasAny = fridayEvents.length > 0 || fridayWatchfest.length > 0
+  const hasAny = fridayEvents.length > 0
 
   return (
     <div className="page-top">
@@ -1575,7 +1202,6 @@ function FridayNightPage({ data, loading }) {
           ) : hasAny ? (
             <div className="events-grid">
               {fridayEvents.map((e, i) => <EventCard key={`ev-${i}`} event={e} />)}
-              {fridayWatchfest.map((w, i) => <WatchFestCard key={`wf-${i}`} item={w} />)}
             </div>
           ) : (
             <div className="empty-state">
@@ -1658,224 +1284,6 @@ function FridayNightPage({ data, loading }) {
   )
 }
 
-// ── WATCH FEST PAGE ─────────────────────────────────────────────────────────
-
-// Extract unique team names from a match string like "Mexico vs South Africa"
-function extractTeams(item) {
-  const name = item.match_name || item.event_name || ''
-  const parts = name.split(/\s+vs\.?\s+/i)
-  if (parts.length === 2) return [parts[0].trim(), parts[1].trim()]
-  // Also try from team_flags emoji+name patterns if available
-  return []
-}
-
-
-function WatchFestPage({ data, loading }) {
-  const [teamFilter, setTeamFilter] = useState('All')
-
-  const activeEvents = useMemo(() => Array.isArray(data.watchfest) ? data.watchfest.filter(item => {
-    if (!isActiveItem(item.active)) return false
-    const status = (item.status || '').toLowerCase()
-    if (status === 'cancelled' || status === 'rejected') return false
-    if (getWatchfestCategory(item) === 'dodgers') return false
-    if (!isUpcoming(item)) return false
-    return true
-  }) : [], [data.watchfest])
-
-const flagship = activeEvents.find(isFlagshipItem)
-
-  const nextEvent = useMemo(() =>
-    activeEvents
-      .filter(e => { const d = parseEventDate(e.kickoff_datetime || e.date); return d && d > Date.now() })
-      .sort((a, b) => {
-        const da = parseEventDate(a.kickoff_datetime || a.date) || 0
-        const db = parseEventDate(b.kickoff_datetime || b.date) || 0
-        return da - db
-      })[0]
-  , [activeEvents])
-  const pageStatus = useKickoffStatus(nextEvent?.kickoff_datetime || nextEvent?.date)
-
-  // Build sorted team list from all active match names
-  const allTeams = useMemo(() => {
-    const set = new Set()
-    activeEvents.forEach(e => extractTeams(e).forEach(t => set.add(t)))
-    return ['All', ...Array.from(set).sort()]
-  }, [activeEvents])
-
-  // Filter + sort by date
-  const filteredEvents = useMemo(() => {
-    const evts = teamFilter === 'All'
-      ? activeEvents
-      : activeEvents.filter(e => extractTeams(e).includes(teamFilter))
-    return [...evts].sort((a, b) => {
-      const da = parseEventDate(a.kickoff_datetime || a.date) || 0
-      const db = parseEventDate(b.kickoff_datetime || b.date) || 0
-      return da - db
-    })
-  }, [activeEvents, teamFilter])
-
-  // Group filtered events by date label
-  const eventsByDate = useMemo(() => {
-    const groups = []
-    const seen = new Map()
-    filteredEvents.forEach(e => {
-      const label = formatDate(e.date) || 'TBD'
-      if (!seen.has(label)) { seen.set(label, []); groups.push({ label, items: seen.get(label) }) }
-      seen.get(label).push(e)
-    })
-    return groups
-  }, [filteredEvents])
-
-  return (
-    <div className="page-top">
-      <section className="page-hero scanlines" style={{ background: 'linear-gradient(180deg, rgba(0,100,40,.08) 0%, #06060F 100%)' }}>
-        <div className="page-hero__bg-text" style={{ color: 'rgba(255,179,0,.03)' }}>WATCH</div>
-        <div className="page-hero__title">
-          <div style={{ color: 'var(--cream)' }}>WATCH</div>
-          <div className="neon-gold" style={{ color: 'var(--gold)' }}>FEST</div>
-        </div>
-        <p style={{ fontFamily: 'var(--font-label)', fontSize: 16, color: 'var(--muted)', maxWidth: 620, margin: '20px auto 0', lineHeight: 1.5, position: 'relative', zIndex: 1 }}>
-          Goal City — World Cup watch parties scattered across multiple venues in the Latin District. Find your match, find your spot.
-        </p>
-      </section>
-
-      <NeonDivider />
-
-      <section className="section">
-        <div className="container">
-          <LiveBadge />
-
-          <div className="section-tag">Goal City</div>
-          <h2 className="section-heading mb-8" style={{ color: 'var(--gold)' }}>
-            WORLD CUP WATCH PARTIES
-          </h2>
-          <p style={{ fontFamily: 'var(--font-label)', fontSize: 14, color: 'var(--muted)', marginBottom: 28, maxWidth: 760 }}>
-            Multiple venues. Multiple matches. Each watch party is hosted at a different spot across the Latin District — check the venue on each card and grab your tickets.
-          </p>
-
-          {/* Next match status / countdown */}
-          {!loading && nextEvent && pageStatus && (
-            <div style={{ background: 'rgba(255,179,0,.06)', border: `1px solid ${pageStatus.state === 'live' ? 'rgba(0,200,83,.4)' : 'rgba(255,179,0,.25)'}`, borderRadius: 4, padding: '20px 24px', marginBottom: 28 }}>
-              <div style={{ fontFamily: 'var(--font-label)', fontSize: 11, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 6 }}>
-                {pageStatus.state === 'live' ? 'Match in Progress' : pageStatus.state === 'final' ? 'Last Match' : 'Next Match Countdown'}
-              </div>
-              <div style={{ fontFamily: 'var(--font-heading)', fontSize: 18, color: 'var(--cream)', marginBottom: 14 }}>
-                {nextEvent.match_name || nextEvent.event_name}
-                {nextEvent.team_flags && <span style={{ marginLeft: 10, fontSize: 22 }}>{nextEvent.team_flags}</span>}
-              </div>
-              {pageStatus.state === 'live' && (
-                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: 16, letterSpacing: '.1em', color: '#00C853' }}>
-                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#00C853', display: 'inline-block' }} />
-                  LIVE NOW
-                </div>
-              )}
-              {pageStatus.state === 'final' && (
-                <div style={{ fontFamily: 'var(--font-label)', fontWeight: 700, fontSize: 14, letterSpacing: '.1em', color: 'var(--muted)' }}>FINAL</div>
-              )}
-              {pageStatus.state === 'upcoming' && (
-                <div className="countdown-grid" style={{ justifyContent: 'flex-start' }}>
-                  {[
-                    { num: String(pageStatus.days).padStart(2, '0'),    label: 'Days' },
-                    { num: String(pageStatus.hours).padStart(2, '0'),   label: 'Hours' },
-                    { num: String(pageStatus.minutes).padStart(2, '0'), label: 'Mins' },
-                  ].map(({ num, label }) => (
-                    <div key={label} className="countdown-box">
-                      <div className="countdown-box__num">{num}</div>
-                      <div className="countdown-box__label">{label}</div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Featured / flagship match */}
-          {!loading && flagship && (
-            <div className="flagship-card mb-40">
-              <div style={{ marginBottom: 12 }}>
-                <span style={{ fontFamily: 'var(--font-label)', fontSize: 11, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--gold)', background: 'rgba(255,179,0,.15)', border: '1px solid rgba(255,179,0,.3)', borderRadius: 2, padding: '4px 10px' }}>
-                  ★ Featured Watch Party
-                </span>
-              </div>
-              {flagship.team_flags && (
-                <div style={{ fontSize: 28, marginBottom: 6, letterSpacing: '0.05em' }}>{flagship.team_flags}</div>
-              )}
-              <h3 style={{ fontFamily: 'var(--font-heading)', fontSize: 'clamp(28px, 6vw, 56px)', color: 'var(--cream)', lineHeight: 1, marginBottom: 8 }}>
-                {flagship.match_name || flagship.event_name}
-              </h3>
-              {flagship.match_stage && (
-                <div style={{ fontFamily: 'var(--font-label)', fontSize: 13, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: 12 }}>
-                  {flagship.match_stage}
-                </div>
-              )}
-              <KickoffStatus kickoffDatetime={flagship.kickoff_datetime} />
-              <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 12, fontFamily: 'var(--font-label)', fontSize: 14, color: 'var(--muted)' }}>
-                {flagship.date && <span>📅 {formatDate(flagship.date)}{flagship.time ? ` · ${flagship.time}` : ''}</span>}
-                {flagship.venue && <span>📍 {flagship.venue}</span>}
-              </div>
-              {flagship.description && (
-                <p style={{ fontFamily: 'var(--font-label)', fontSize: 14, color: 'var(--muted)', maxWidth: 760, lineHeight: 1.55, marginBottom: 16 }}>
-                  {flagship.description}
-                </p>
-              )}
-              {flagship.ticket_link ? (
-                <a href={flagship.ticket_link} target="_blank" rel="noopener noreferrer" className="btn btn-gold" onClick={() => trackTicketClick(flagship, 'watchfest')}>Get Tickets →</a>
-              ) : (
-                <button className="btn btn-outline-blue">Ticket Link Coming Soon</button>
-              )}
-            </div>
-          )}
-
-          {/* Clifton teaser cards — flagship but not yet announced */}
-          {/* Team / country filter chips */}
-          {!loading && allTeams.length > 1 && (
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 28 }}>
-              {allTeams.map(team => (
-                <button
-                  key={team}
-                  onClick={() => setTeamFilter(team)}
-                  style={{
-                    fontFamily: 'var(--font-label)', fontSize: 12, fontWeight: 700,
-                    letterSpacing: '.08em', textTransform: 'uppercase',
-                    padding: '6px 14px', borderRadius: 2, cursor: 'pointer',
-                    border: teamFilter === team ? '1px solid var(--gold)' : '1px solid rgba(255,255,255,.12)',
-                    background: teamFilter === team ? 'rgba(255,179,0,.15)' : 'transparent',
-                    color: teamFilter === team ? 'var(--gold)' : 'var(--muted)',
-                    transition: 'all .15s',
-                  }}
-                >
-                  {team}
-                </button>
-              ))}
-            </div>
-          )}
-
-          {/* Events grouped by date */}
-          {loading ? (
-            <div className="events-grid">{[1,2,3,4].map(i => <SkeletonCard key={i} />)}</div>
-          ) : eventsByDate.length > 0 ? (
-            eventsByDate.map(({ label, items }) => (
-              <div key={label} style={{ marginBottom: 40 }}>
-                <div style={{ fontFamily: 'var(--font-label)', fontSize: 11, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--gold)', borderBottom: '1px solid rgba(255,179,0,.2)', paddingBottom: 8, marginBottom: 20 }}>
-                  {label}
-                </div>
-                <MatchCarousel
-                  items={items}
-                  renderItem={(item, i) => <WatchFestCard key={i} item={item} />}
-                />
-              </div>
-            ))
-          ) : (
-            <div className="empty-state">
-              <div className="empty-state__icon">⚽</div>
-              <p>{teamFilter !== 'All' ? `No upcoming watch parties for ${teamFilter}.` : 'No watch parties yet — check back soon.'}</p>
-            </div>
-          )}
-        </div>
-      </section>
-    </div>
-  )
-}
 
 // ── BAR CRAWL PAGE ──────────────────────────────────────────────────────────
 
@@ -2331,42 +1739,29 @@ function CalendarPage({ data, loading }) {
     return true
   }), [data.events])
 
-  const approvedWatchfest = useMemo(() => (data.watchfest || []).filter(w => {
-    if (!isActiveItem(w.active)) return false
-    const status = (w.status || '').toLowerCase()
-    if (status === 'cancelled' || status === 'rejected') return false
-    if (!isUpcoming(w)) return false
-    return true
-  }), [data.watchfest])
-
   const eventsByDate = useMemo(() => {
     const map = {}
-    const add = (item, type) => {
-      const d = parseEventDate(item.date)
+    approvedEvents.forEach(e => {
+      const d = parseEventDate(e.date)
       if (!d) return
       const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
       if (!map[key]) map[key] = []
-      map[key].push({ ...item, _type: type })
-    }
-    approvedEvents.forEach(e => add(e, 'event'))
-    approvedWatchfest.forEach(w => add(w, 'watchfest'))
+      map[key].push({ ...e, _type: 'event' })
+    })
     return map
-  }, [approvedEvents, approvedWatchfest])
+  }, [approvedEvents])
 
   // Upcoming events list — all approved items from today onward, sorted by date
   const upcomingList = useMemo(() => {
     const todayMs = new Date().setHours(0, 0, 0, 0)
-    const all = [
-      ...approvedEvents.map(e => ({ ...e, _type: 'event' })),
-      ...approvedWatchfest.map(w => ({ ...w, _type: 'watchfest' })),
-    ]
-    return all
+    return approvedEvents
+      .map(e => ({ ...e, _type: 'event' }))
       .filter(item => {
         const d = parseEventDate(item.date)
         return d && d.getTime() >= todayMs
       })
       .sort((a, b) => parseEventDate(a.date) - parseEventDate(b.date))
-  }, [approvedEvents, approvedWatchfest])
+  }, [approvedEvents])
 
   const firstDayOfMonth = new Date(curYear, curMonth, 1).getDay()
   const daysInMonth     = new Date(curYear, curMonth + 1, 0).getDate()
@@ -2437,11 +1832,10 @@ function CalendarPage({ data, loading }) {
                     >
                       <div className="cal-cell__num">{day}</div>
                       {dayEvents.slice(0, 2).map((ev, j) => {
-                        const isWf = ev._type === 'watchfest'
-                        const name = ev.match_name || ev.event_name || ''
+                        const name = ev.event_name || ''
                         return (
-                          <div key={j} className="cal-event-dot" style={{ borderLeft: `2px solid ${isWf ? 'var(--gold)' : 'var(--red)'}` }}>
-                            <span>{isWf ? '⚽' : '🎉'}</span>
+                          <div key={j} className="cal-event-dot" style={{ borderLeft: '2px solid var(--red)' }}>
+                            <span>🎉</span>
                             {name.slice(0, 16)}{name.length > 16 ? '…' : ''}
                           </div>
                         )
@@ -2469,18 +1863,13 @@ function CalendarPage({ data, loading }) {
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                   {dayEvts.map((ev, i) => {
-                    const isWf  = ev._type === 'watchfest'
-                    const name  = ev.match_name || ev.event_name || 'Event'
-                    const badge = isWf
-                      ? { bg: 'rgba(255,179,0,.18)', color: 'var(--gold)', label: 'Watch Fest' }
-                      : (BADGE_COLORS[ev.event_type] || BADGE_COLORS.special)
+                    const name  = ev.event_name || 'Event'
+                    const badge = BADGE_COLORS[ev.event_type] || BADGE_COLORS.special
                     const imgUrl = convertDriveUrl(ev.flyer_image_url)
-                    // Normalise so EventModal always has event_name
-                    const normalised = { ...ev, event_name: name }
                     return (
                       <div
                         key={i}
-                        onClick={() => setCalModalEvent(normalised)}
+                        onClick={() => setCalModalEvent(ev)}
                         style={{ display: 'flex', gap: 14, alignItems: 'flex-start', cursor: 'pointer', borderRadius: 4, padding: '4px 0', transition: 'opacity .15s' }}
                         onMouseEnter={e => e.currentTarget.style.opacity = '.8'}
                         onMouseLeave={e => e.currentTarget.style.opacity = '1'}
@@ -2488,7 +1877,7 @@ function CalendarPage({ data, loading }) {
                         <div style={{ width: 52, height: 52, flexShrink: 0, borderRadius: 3, overflow: 'hidden', background: '#0a0a1a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>
                           {imgUrl
                             ? <img src={imgUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" />
-                            : (isWf ? '⚽' : '🎉')}
+                            : '🎉'}
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <span className="event-card__badge" style={{ background: badge.bg, color: badge.color, marginBottom: 4, display: 'inline-block' }}>{badge.label}</span>
@@ -2502,7 +1891,7 @@ function CalendarPage({ data, loading }) {
                             rel="noopener noreferrer"
                             className="btn btn-red"
                             style={{ fontSize: 12, padding: '8px 12px', minHeight: 34, flexShrink: 0, alignSelf: 'center' }}
-                            onClick={e => { e.stopPropagation(); trackTicketClick(normalised, isWf ? 'watchfest' : 'nightlife') }}
+                            onClick={e => { e.stopPropagation(); trackTicketClick(ev, 'nightlife') }}
                           >Tickets →</a>
                         )}
                       </div>
@@ -2517,7 +1906,6 @@ function CalendarPage({ data, loading }) {
           <div style={{ display: 'flex', gap: 20, marginTop: 16, flexWrap: 'wrap', fontFamily: 'var(--font-label)', fontSize: 12, color: 'var(--muted)' }}>
             {[
               { color: 'var(--red)',  label: 'Events' },
-              { color: 'var(--gold)', label: 'Watch Fest' },
               { color: 'var(--blue)', label: 'Today', border: true },
             ].map(({ color, label, border }) => (
               <span key={label} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -2541,11 +1929,8 @@ function CalendarPage({ data, loading }) {
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
                 {upcomingList.map((item, i) => {
-                  const isWf   = item._type === 'watchfest'
-                  const name   = item.match_name || item.event_name || 'Event'
-                  const badge  = isWf
-                    ? { bg: 'rgba(255,179,0,.18)', color: 'var(--gold)', label: 'Watch Fest' }
-                    : (BADGE_COLORS[item.event_type] || BADGE_COLORS.special)
+                  const name   = item.event_name || 'Event'
+                  const badge  = BADGE_COLORS[item.event_type] || BADGE_COLORS.special
                   const imgUrl = convertDriveUrl(item.flyer_image_url)
                   return (
                     <div
@@ -2562,7 +1947,7 @@ function CalendarPage({ data, loading }) {
                       <div style={{ width: 64, height: 64, flexShrink: 0, borderRadius: 3, overflow: 'hidden', background: '#0a0a1a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24 }}>
                         {imgUrl
                           ? <img src={imgUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" onError={e => { e.target.style.display='none'; e.target.parentNode.innerHTML='🎉' }} />
-                          : (isWf ? '⚽' : '🎉')}
+                          : '🎉'}
                       </div>
                       {/* Info */}
                       <div style={{ flex: 1, minWidth: 0 }}>
@@ -2583,7 +1968,7 @@ function CalendarPage({ data, loading }) {
                           rel="noopener noreferrer"
                           className="btn btn-red"
                           style={{ fontSize: 12, padding: '8px 14px', minHeight: 36, flexShrink: 0, alignSelf: 'center' }}
-                          onClick={() => trackTicketClick(item, isWf ? 'watchfest' : 'nightlife')}
+                          onClick={() => trackTicketClick(item, 'nightlife')}
                         >
                           Tickets →
                         </a>
@@ -2634,14 +2019,10 @@ export default function App() {
   useEffect(() => {
     if (loading) return
     const srcs = []
-    const evts = data.events   || []
-    const wf   = data.watchfest || []
+    const evts = data.events || []
 
-    const flagship   = evts.find(e => isActiveItem(e.active) && isFlagshipItem(e) && isUpcoming(e))
-    const flagshipWF = wf.find(e  => isActiveItem(e.active)  && isFlagshipItem(e) && isUpcoming(e))
-
-    if (flagship?.flyer_image_url)   srcs.push(convertDriveUrl(flagship.flyer_image_url))
-    if (flagshipWF?.flyer_image_url) srcs.push(flagshipWF.flyer_image_url)
+    const flagship = evts.find(e => isActiveItem(e.active) && isFlagshipItem(e) && isUpcoming(e))
+    if (flagship?.flyer_image_url) srcs.push(convertDriveUrl(flagship.flyer_image_url))
 
     const { events: weekendEvs } = getThisWeekendEvents(evts)
     weekendEvs.forEach(e => { if (e.flyer_image_url) srcs.push(convertDriveUrl(e.flyer_image_url)) })
@@ -2659,7 +2040,7 @@ export default function App() {
         <Route path="/calendar" element={<CalendarPage data={data} loading={loading} />} />
         <Route path="/venues" element={<VenuesPage data={data} loading={loading} />} />
         <Route path="/friday-night" element={<FridayNightPage data={data} loading={loading} />} />
-        <Route path="/watchfest" element={<WatchFestPage data={data} loading={loading} />} />
+        <Route path="/watchfest" element={<Navigate to="/events" replace />} />
         <Route path="/bar-crawl" element={
           <div className="page-top" style={{ textAlign: 'center', padding: '120px 24px' }}>
             <div style={{ fontFamily: 'var(--font-label)', fontSize: 12, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--purple)', marginBottom: 20 }}>Coming Soon</div>

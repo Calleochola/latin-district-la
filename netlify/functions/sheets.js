@@ -5,10 +5,9 @@
 const SHEET_ID = '1kTmZVGB8Qz9Xy8za6A18GE_NzWvEKFqHHkdSTfbnvcM'
 
 const TABS = {
-  events:    'Events',
-  venues:    'Venues',
-  watchfest: 'WatchFest',
-  barcrawl:  'BarCrawl',
+  events:   'Events',
+  venues:   'Venues',
+  barcrawl: 'BarCrawl',
 }
 
 // ── gviz helpers ──────────────────────────────────────────────────────────
@@ -103,14 +102,6 @@ function transformVenues(rows) {
   }))
 }
 
-function transformWatchFest(rows) {
-  return rows.map(r => ({
-    ...r,
-    flyer_image_url:  convertDriveUrl(r.flyer_image_url),
-    venue_image_url:  convertDriveUrl(r.venue_image_url),
-  }))
-}
-
 // ── Fetch one tab ─────────────────────────────────────────────────────────
 
 async function fetchTab(name) {
@@ -131,19 +122,17 @@ export const handler = async (event) => {
                          params.refresh === '1' &&
                          params.token === REFRESH_SECRET
 
-  const [eventsResult, venuesResult, watchfestResult, barcrawlResult] =
+  const [eventsResult, venuesResult, barcrawlResult] =
     await Promise.allSettled([
       fetchTab(TABS.events),
       fetchTab(TABS.venues),
-      fetchTab(TABS.watchfest),
       fetchTab(TABS.barcrawl),
     ])
 
   for (const [name, result] of [
-    [TABS.events,    eventsResult],
-    [TABS.venues,    venuesResult],
-    [TABS.watchfest, watchfestResult],
-    [TABS.barcrawl,  barcrawlResult],
+    [TABS.events,   eventsResult],
+    [TABS.venues,   venuesResult],
+    [TABS.barcrawl, barcrawlResult],
   ]) {
     if (result.status === 'fulfilled') {
       console.log(`[sheets] ${name}: ${result.value.length} rows`)
@@ -152,16 +141,14 @@ export const handler = async (event) => {
     }
   }
 
-  const eventsRaw    = eventsResult.status    === 'fulfilled' ? eventsResult.value    : []
-  const venuesRaw    = venuesResult.status    === 'fulfilled' ? venuesResult.value    : []
-  const watchfestRaw = watchfestResult.status === 'fulfilled' ? watchfestResult.value : []
-  const barcrawlRaw  = barcrawlResult.status  === 'fulfilled' ? barcrawlResult.value  : []
+  const eventsRaw   = eventsResult.status   === 'fulfilled' ? eventsResult.value   : []
+  const venuesRaw   = venuesResult.status   === 'fulfilled' ? venuesResult.value   : []
+  const barcrawlRaw = barcrawlResult.status === 'fulfilled' ? barcrawlResult.value : []
 
   const payload = {
-    events:    transformEvents(eventsRaw),
-    venues:    transformVenues(venuesRaw),
-    watchfest: transformWatchFest(watchfestRaw),
-    barcrawl:  barcrawlRaw,
+    events:   transformEvents(eventsRaw),
+    venues:   transformVenues(venuesRaw),
+    barcrawl: barcrawlRaw,
   }
 
   return {
