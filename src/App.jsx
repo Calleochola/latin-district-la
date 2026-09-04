@@ -12,7 +12,7 @@ const FALLBACK_VENUES = [
   { venue_name: 'Rhythm Room LA',        tag: 'Dance Floor · DJ Sets',        active: 'yes', description: 'Underground DTLA lounge with live music, games, DJs, and a lively dance-room feel.',               address: '206 W 6th St #BSMT, Los Angeles, CA 90014',         hours_summary: 'Thu-Sat 6PM-2AM; Sun 6PM-12AM',                              instagram: '@rhythmroomla',        photo_url: 'https://images.squarespace-cdn.com/content/v1/59e009372278e7813f9403c0/1670030253365-L4OSZ2QJUUW3IETQ9JSQ/POOL+LOUNGE+POOL+TABLE+CLOSE+UP+FROM+P1.JPG?format=2500w' },
   { venue_name: 'Las Perlas',            tag: 'Mezcal Bar · Cocktails',       active: 'yes', description: 'Mezcal-forward DTLA bar with cocktails, patio energy, and Latin nightlife.',                         address: '107 E 6th St, Los Angeles, CA 90014',               hours_summary: 'Mon-Fri 3PM-2AM; Sat-Sun 1PM-2AM',                           instagram: '@lasperlasla',         photo_url: 'https://img.ctykit.com/cdn/ca-dtla/images/tr:w-1800/las-perlas2.jpg' },
   { venue_name: 'The Grayson',           tag: 'Cocktail Lounge · Live Sound', active: 'yes', description: 'Broadway cocktail lounge built for late nights, music, and high-energy groups.',                     address: '351 S Broadway, Los Angeles, CA 90013',             hours_summary: 'Daily 8PM-2AM',                                               instagram: '@thegraysonla',        photo_url: 'https://www.thegraysondtla.com/_next/image?url=%2Fsections%2Fvisit-bg.jpg&w=1080&q=75' },
-  { venue_name: 'Continental Club',      tag: 'Basement Club · Social',       active: 'yes', description: 'Basement nightlife room with DJs, dancing, and a polished social crowd.',                            address: '116 W 4th St, Los Angeles, CA 90013',               hours_summary: 'Mon 8PM-12AM; Thu 7PM-2AM; Fri-Sat 10PM-2AM',               instagram: '',                     photo_url: 'https://www.circa93.com/wp-content/uploads/2024/03/The-Continental-Club-24.jpg' },
+  { venue_name: 'Continental Club',      tag: 'Basement Club · Social',       active: 'yes', description: 'Underground lounge in the heart of Downtown LA\'s gallery row with DJs, dancing, and a polished social crowd.',  address: '116 W 4th St, Los Angeles, CA 90013',               hours_summary: 'Mon 8PM-1AM; Fri-Sat 10PM-2AM',                             instagram: '@continentalclub',     photo_url: 'https://www.circa93.com/wp-content/uploads/2024/03/The-Continental-Club-24.jpg' },
   { venue_name: 'Spring St Bar',         tag: 'Neighborhood Bar · Cocktails', active: 'yes', description: 'Historic Core neighborhood bar with reliable cocktails and easy watch party energy.',                 address: '626 S Spring St Suite B, Los Angeles, CA 90014',    hours_summary: 'Mon-Fri 5PM-2AM; Sat-Sun 2PM-Late',                          instagram: '@springstbar',         photo_url: 'https://img.mlbstatic.com/mlb-images/image/private/t_16x9/t_w1536/mlb/kusol2ek3erbryzcxt2s.jpg' },
   { venue_name: 'Broken Shaker',         tag: 'Rooftop · Craft Cocktails',    active: 'yes', description: 'Rooftop pool-deck cocktail bar with tropical drinks and DTLA views.',                                address: '416 W 8th St, Los Angeles, CA 90014',               hours_summary: 'Daily 12PM-12AM',            happy_hour: 'Daily 4PM-7PM',     instagram: '@brokenshaker',        photo_url: 'https://punchdrink.com/wp-content/uploads/2018/03/Slide2-Broken-Shaker-Hotel-Bar-Figueroa-Rudolphs-Los-Angeles-LA.jpg' },
   { venue_name: 'The Slipper Clutch',    tag: 'Rock Bar · Live Music',        active: 'yes', description: 'Rock speakeasy with live music, arcade energy, and a gritty DTLA feel.',                              address: '351 S Broadway, Los Angeles, CA 90013',             hours_summary: 'Daily 8PM-2AM',                                               instagram: '@theslipperclutch',    photo_url: 'https://platform.la.eater.com/wp-content/uploads/sites/26/chorus/uploads/chorus_asset/file/8457809/2017_05_02_Slipper_Clutch_006.jpg?quality=90&strip=all&w=1200' },
@@ -21,8 +21,8 @@ const FALLBACK_VENUES = [
   { venue_name: 'Kiso',                  tag: 'Queer Bar · DJ Sets',          active: 'yes', description: 'Downtown queer bar with drag, DJs, and a welcoming late-night crowd.',                                address: '107 W 4th St, Los Angeles, CA 90013',               hours_summary: 'Mon closed; Tue 6PM-1AM; Wed-Sat 6PM-2AM; Sun special events', instagram: '@kisolosangeles',     photo_url: 'https://res.cloudinary.com/the-infatuation/image/upload/c_fill,w_1400,ar_4:3,g_center,f_auto/Kiso_los_angeles_ogus4y' },
   { venue_name: 'Florentín Rooftop',     tag: 'Rooftop · Skyline Views',      active: 'yes', description: 'Mediterranean-inspired rooftop with skyline views, cocktails, and group seating.',                    address: '617 S Spring St, Los Angeles, CA 90014',            hours_summary: 'Mon closed; Tue-Fri 5PM-2AM; Sat 2PM-2AM; Sun 2PM-12AM',    instagram: '@florentindtla',       photo_url: 'https://florentindtla.com/wp-content/uploads/2025/02/Photo-Feb-18-2023-6-15-46-PM-2-scaled.jpg' },
   { venue_name: 'A Toda Madre',          tag: 'Tequila · Mezcal',             active: 'yes', description: 'Tequila and mezcal lounge with bold Latin design and DJ-driven nights.',                              address: '626 S Spring St, Los Angeles, CA 90014',            hours_summary: 'Daily 5PM-2AM',                                               instagram: '@atodamadrecantina',   photo_url: 'https://s3-media0.fl.yelpcdn.com/bphoto/M7X_vGz9GLXhFWlPWBqWEQ/348s.jpg' },
-  { venue_name: 'The Association',       tag: 'Underground · Cocktails',      active: 'yes', description: 'Moody subterranean cocktail lounge with DJs, leather booths, and classic DTLA nightlife.',             address: '110 E 6th St, Los Angeles, CA 90014',               hours_summary: 'See venue/event calendar',                                    instagram: '',                     photo_url: 'https://img.ctykit.com/cdn/ca-dtla/images/tr:w-1800/association-fb-banner.jpg' },
-  { venue_name: 'La Cita',               tag: 'Cumbia · Live Music',          active: 'yes', description: 'Iconic DTLA bar with cumbia, live music, patio drinks, and a loyal local crowd.',                     address: '336 S Hill St, Los Angeles, CA 90013',              hours_summary: 'Mon-Fri 11AM-2AM; Sat-Sun 10AM-2AM',  happy_hour: 'Daily 4PM-9PM', instagram: '@lacitabar', photo_url: '' },
+  { venue_name: 'The Association',       tag: 'Underground · Cocktails',      active: 'yes', description: 'Moody NYC-style cocktail lounge with a 60-foot bar, leather banquettes, DJs, and Latin Fridays in the heart of DTLA.', address: '110 E 6th St, Los Angeles, CA 90014',               hours_summary: 'Thu 10PM-2AM; Fri-Sat 9PM-2AM; Sun 8PM-12AM; Mon-Wed closed', instagram: '@theassociationla',   photo_url: 'https://img.ctykit.com/cdn/ca-dtla/images/tr:w-1800/association-fb-banner.jpg' },
+  { venue_name: 'La Cita',               tag: 'Cumbia · Live Music',          active: 'yes', description: 'Iconic DTLA bar with cumbia, live music, patio drinks, and a loyal local crowd. Building dates to 1897.', address: '336 S Hill St, Los Angeles, CA 90013',              hours_summary: 'Mon-Fri 11AM-2AM; Sat-Sun 10AM-2AM',  happy_hour: 'Daily 4PM-9PM', instagram: '@lacitabar', photo_url: 'https://scoundrelsfieldguide.com/wp-content/uploads/2023/04/Los-Angeles-La-Cita-Bar-2-scaled.jpg' },
   { venue_name: 'Audio Graph Brewing Co', tag: 'Brewery · Sports',            active: 'yes', description: 'South Park brewery with fresh taps, sports-friendly energy, and community seating.',                  address: '1203 S Olive St, Los Angeles, CA 90015',            hours_summary: 'Mon-Thu 4PM-10PM; Fri 4PM-12AM; Sat 12PM-12AM; Sun 2PM-8PM', instagram: '@audiographbeerco',   photo_url: 'https://static.wixstatic.com/media/9c73d9_80f8647bab2d4b469cc826af69b59768~mv2.jpeg/v1/fill/w_490%2Ch_368%2Cal_c%2Cq_80%2Cusm_0.66_1.00_0.01%2Cenc_avif%2Cquality_auto/9c73d9_80f8647bab2d4b469cc826af69b59768~mv2.jpeg' },
   { venue_name: 'Native Son LA',         tag: 'Rooftop · Craft Beer',         active: 'yes', description: 'DTLA rooftop and bar with craft beer, cocktails, and sunny group-friendly vibes.',                    address: '832 S Olive St, Los Angeles, CA 90014',             hours_summary: 'Mon-Fri 2:30PM-10PM; Sat-Sun 10AM-10PM', happy_hour: 'Daily 4PM-6PM', instagram: '@nativesonla', photo_url: 'https://images.squarespace-cdn.com/content/v1/68bb1d739c950b08f4f3d10e/1757093245762-UFC15SMNAM3A3IQHDLGT/NativeSonLA.jpg' },
   { venue_name: 'Arts District Brewing', tag: 'Brewery · Games',              active: 'yes', description: 'Large Arts District brewery with games, food, and big-match energy.',                                 address: '828 Traction Ave, Los Angeles, CA 90013',           hours_summary: 'Mon-Thu 11AM-12AM; Fri 11AM-2AM; Sat 12PM-2AM; Sun 12PM-12AM', instagram: '@artsdistrictbrewing', photo_url: 'https://static.wixstatic.com/media/714aff_c239e6edc2c24c7183d073edb81f053d~mv2.jpg/v1/fill/w_317%2Ch_394%2Cq_90%2Cenc_avif%2Cquality_auto/714aff_c239e6edc2c24c7183d073edb81f053d~mv2.jpg' },
@@ -30,10 +30,11 @@ const FALLBACK_VENUES = [
   { venue_name: 'Precinct',              tag: 'LGBTQ+ · Drag',                active: 'yes', description: 'Large LGBTQ+ venue with drag, DJs, brunch, dancing, and strong community energy.',                   address: '357 S Broadway, Los Angeles, CA 90013',             hours_summary: 'Mon closed; Tue-Fri 6PM-2AM; Sat 5PM-2AM; Sun 11:30AM-12AM', happy_hour: 'Tue-Sat 6PM-9PM', instagram: '@precinctdtla', photo_url: 'https://precinctdtla.com/wp-content/uploads/2026/05/image.webp' },
   { venue_name: "Lala's Grill",          tag: 'Argentine Grill · Groups',     active: 'yes', description: 'Argentine grill with hearty plates, group-friendly dining, and happy hour.',                          address: '105 W 9th St, Los Angeles, CA 90015',               hours_summary: 'Sun-Thu 11AM-10PM; Fri-Sat 11AM-10PM', happy_hour: '3PM-6PM', instagram: '@lalasgrill', photo_url: 'https://lalasgrill.com/images/locations/dtla.jpg' },
   { venue_name: 'Golden Gopher',         tag: 'Dive Bar · Historic',          active: 'yes', description: 'Historic DTLA dive with classic drinks, neon character, and laid-back crowds.',                       address: '417 W 8th St, Los Angeles, CA 90014',               hours_summary: 'Open nightly 3PM-2AM', happy_hour: 'Daily 3PM-8PM',          instagram: '@goldengopherla',      photo_url: 'https://static.wixstatic.com/media/a50d2e_d5e9dd2e777d4799ad09da442ce48bf7~mv2.png/v1/fill/w_980%2Ch_786%2Cal_c%2Cq_90%2Cusm_0.66_1.00_0.01%2Cenc_avif%2Cquality_auto/Gopher%20Exterior%20%281%29.png' },
-  { venue_name: 'West Eight',            tag: 'Nightclub · DJ Sets',          active: 'yes', description: 'Modern nightclub under Hotel Bristol with immersive lights, sound, and late-night energy.',           address: '425 W 8th St, Los Angeles, CA 90014',               hours_summary: 'Event-based; doors often 10PM',                               instagram: '@west8la',             photo_url: '' },
+  { venue_name: 'West Eight',            tag: 'Nightclub · DJ Sets',          active: 'yes', description: 'Modern nightclub under Hotel Bristol with immersive lights, state-of-the-art sound, and late-night energy. Up to 450 guests.', address: '425 W 8th St, Los Angeles, CA 90014',               hours_summary: 'Fri-Sat 9:30PM-2AM',                                          instagram: '@west8la',             photo_url: 'https://static.spotapps.co/website_images/ab_websites/287232_website/about_pg_left_new.jpg' },
   { venue_name: 'Five Star Bar',         tag: 'Live Music · Local Bar',       active: 'yes', description: 'Local DTLA live-music bar with underground energy and late-night shows.',                              address: '267 S Main St, Los Angeles, CA 90012',              hours_summary: 'Event-based; verify per show',                                instagram: '@5starbar',            photo_url: 'https://ca-times.brightspotcdn.com/dims4/default/b3c57dc/2147483647/strip/true/crop/8420x5613%2B0%2B0/resize/1200x800%21/quality/75/?url=https%3A%2F%2Fcalifornia-times-brightspot.s3.amazonaws.com%2Fd4%2F5f%2F42f0f55e436392525a9ee5ff41b8%2F1497469-et-5-star-bar-3862.jpg' },
   { venue_name: 'Lost',                  tag: 'Rooftop · Tacos',              active: 'yes', description: 'Mexico City-inspired rooftop cocktail bar with tacos, DJs, and skyline views.',                       address: '718 S Hill St Rooftop, Los Angeles, CA 90014',      hours_summary: 'Fri-Sat 8PM-late; Sat brunch 11AM-3PM; Sun 3PM-9PM',         instagram: '@getlostdtla',         photo_url: 'https://platform.la.eater.com/wp-content/uploads/sites/26/chorus/uploads/chorus_asset/file/25639247/240916___Lost_Bar__Shelby_Moore____240916___Lost_Bar52270.jpg?quality=90&strip=all&w=2400' },
   { venue_name: 'The Mayan',             tag: 'Theater · Nightclub',          active: 'yes', description: 'Historic Mayan Revival theater and nightclub space with large-format production.',                    address: '1038 S Hill St, Los Angeles, CA 90015',             hours_summary: 'Sun-Thu closed; Fri-Sat 9:30PM-2AM',                          instagram: '@mayanla',             photo_url: 'https://mayanmusicvenue.com/wp-content/uploads/2026/02/crowd_purple_lit_stage_digital_visuals.jpg' },
+  { venue_name: 'Somewhere Special',     tag: 'Rooftop · Views · DJ Sets',    active: 'yes', description: 'Rooftop bar atop the STILE Hotel in the Historic Core with panoramic skyline views, house music DJs, and curated cocktails.', address: '929 S Broadway, Los Angeles, CA 90015',             hours_summary: 'Thu 3PM-1AM; Fri 2PM-2AM; Sat 12PM-2AM; Sun 12PM-12AM',     instagram: '@somewherespecial.la', photo_url: 'https://images.squarespace-cdn.com/content/v1/682e21b2baf3d40a191ebea7/2aad99ed-0eb9-49dc-bb82-6236d746dc44/Somewhere+Special+-+Night+Life.jpg' },
   { venue_name: "Clifton's Republic",    tag: 'Landmark · Immersive',         active: 'verify', description: 'Immersive forest-themed DTLA landmark.',                                                          address: '648 S Broadway, Los Angeles, CA 90014',             hours_summary: 'Verify before publishing',                                    instagram: '@cliftonsrepublic',    photo_url: '' },
 ]
 
@@ -603,26 +604,47 @@ function SpotlightCard({ event }) {
 
 function VenueCard({ venue }) {
   const imgUrl = convertDriveUrl(venue.photo_url || venue.venue_image_url)
+  const directionsUrl = venue.address
+    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(venue.address)}`
+    : null
+
   return (
     <div className="venue-card">
       <div className="venue-card__photo">
         {imgUrl ? (
           <img src={imgUrl} alt={venue.venue_name} loading="lazy" />
         ) : (
-          <div className="venue-card__photo-placeholder">🏠</div>
+          <div className="venue-card__photo-placeholder">🏢</div>
         )}
       </div>
       <div className="venue-card__body">
         <div className="venue-card__name">{venue.venue_name}</div>
         <div className="venue-card__tag">{venue.tag}</div>
         {venue.description && <div className="venue-card__desc">{venue.description}</div>}
-        {venue.instagram && (
-          <div className="venue-card__ig">
-            <a href={`https://instagram.com/${venue.instagram.replace('@','')}`} target="_blank" rel="noopener noreferrer">
-              @{venue.instagram.replace('@','')}
-            </a>
+        {venue.address && (
+          <div className="venue-card__address">
+            <span aria-hidden="true">📍</span>
+            {venue.address}
           </div>
         )}
+        {venue.hours_summary && (
+          <div className="venue-card__hours">
+            <span aria-hidden="true">🕙</span>
+            {venue.hours_summary}
+          </div>
+        )}
+        <div className="venue-card__actions">
+          {directionsUrl && (
+            <a href={directionsUrl} target="_blank" rel="noopener noreferrer" className="venue-card__action-link">
+              Get Directions
+            </a>
+          )}
+          {venue.instagram && (
+            <a href={`https://instagram.com/${venue.instagram.replace('@','')}`} target="_blank" rel="noopener noreferrer" className="venue-card__action-link venue-card__ig-link">
+              {venue.instagram.startsWith('@') ? venue.instagram : `@${venue.instagram}`}
+            </a>
+          )}
+        </div>
       </div>
       {venue.media_urls && venue.media_types && (
         <MediaCarousel mediaUrls={venue.media_urls} mediaTypes={venue.media_types} />
@@ -665,10 +687,16 @@ function SkeletonCard() {
 
 const NAV_LINKS = [
   { to: '/',             label: 'Home' },
-  { to: '/events',       label: 'Events' },
-  { to: '/calendar',     label: 'Calendar' },
-  { to: '/friday-night', label: 'Friday Night' },
   { to: '/venues',       label: 'Venues' },
+  { to: '/friday-night', label: 'Friday Night' },
+  { to: '/events',       label: 'Events' },
+  { to: '/about',        label: 'About' },
+]
+
+// Links visible in footer but not primary nav
+const FOOTER_EXTRA_LINKS = [
+  { to: '/calendar',     label: 'Calendar' },
+  { to: '/submit-event', label: 'Submit Event' },
   { to: '/resources',    label: 'Resources' },
   { to: '/contact',      label: 'Contact' },
 ]
@@ -690,8 +718,8 @@ function Nav() {
               {l.label}
             </NavLink>
           ))}
-          <Link to="/submit-event" className="btn btn-red" style={{ padding: '8px 18px', fontSize: 12, minHeight: 36 }}>
-            Submit Event
+          <Link to="/contact" className="btn btn-red" style={{ padding: '8px 18px', fontSize: 12, minHeight: 36 }}>
+            Join the District
           </Link>
         </div>
 
@@ -707,7 +735,10 @@ function Nav() {
             {l.label}
           </NavLink>
         ))}
-        <Link to="/submit-event" className="btn btn-red" onClick={() => setDrawerOpen(false)} style={{ marginTop: 16 }}>
+        <Link to="/contact" className="btn btn-red" onClick={() => setDrawerOpen(false)} style={{ marginTop: 16 }}>
+          Join the District
+        </Link>
+        <Link to="/submit-event" className="drawer__link" onClick={() => setDrawerOpen(false)} style={{ fontSize: 14, marginTop: 4 }}>
           Submit Event
         </Link>
       </div>
@@ -718,12 +749,12 @@ function Nav() {
 // ── Footer ──────────────────────────────────────────────────────────────────
 
 function Footer() {
+  const allFooterLinks = [...NAV_LINKS, ...FOOTER_EXTRA_LINKS]
   return (
     <footer className="footer">
       <img src="/logo.png" alt="Latin District LA" className="footer__logo" onError={e => { e.target.style.display='none' }} />
       <div className="footer__links">
-        {NAV_LINKS.map(l => <Link key={l.to} to={l.to} className="footer__link">{l.label}</Link>)}
-        <Link to="/submit-event" className="footer__link">Submit Event</Link>
+        {allFooterLinks.map(l => <Link key={l.to} to={l.to} className="footer__link">{l.label}</Link>)}
       </div>
       <div style={{ display: 'flex', gap: 16, justifyContent: 'center', marginBottom: 20, flexWrap: 'wrap' }}>
         <a href="https://instagram.com/LatinDistrictLA" target="_blank" rel="noopener noreferrer" style={{ fontFamily: 'var(--font-label)', fontSize: 13, color: 'var(--muted)' }}>
@@ -756,10 +787,10 @@ function HomePage({ data, loading }) {
 
   const { events: weekendEvents, isWeekend } = getThisWeekendEvents(data.events)
   const spotlightEvent = data.events.find(e => isActiveItem(e.active) && isSpotlightItem(e) && isUpcoming(e))
-  const flagshipEvent = data.events.find(e => isActiveItem(e.active) && isFlagshipItem(e) && isUpcoming(e))
-  const venueStrip = (data.venues.length > 0 ? data.venues : FALLBACK_VENUES)
-    .filter(v => isActiveItem(v.active))
-    .slice(0, 8)
+
+  const allVenues = (data.venues.length > 0 ? data.venues : FALLBACK_VENUES)
+    .filter(v => isActiveItem(v.active) && (v.active || '').toLowerCase() !== 'verify')
+  const featuredVenues = allVenues.slice(0, 6)
 
   const bannerMsg = successType === 'event'
     ? 'Event submitted! We received your event and will review it within 48 hours.'
@@ -772,14 +803,14 @@ function HomePage({ data, loading }) {
       {showBanner && (
         <div style={{ position: 'fixed', top: 60, left: 0, right: 0, zIndex: 900, display: 'flex', justifyContent: 'center', padding: '0 16px', pointerEvents: 'none' }}>
           <div style={{ background: '#0D2B1A', border: '1px solid #00C853', borderRadius: 8, padding: '14px 20px', maxWidth: 520, width: '100%', display: 'flex', alignItems: 'flex-start', gap: 12, pointerEvents: 'auto', boxShadow: '0 4px 24px rgba(0,200,83,.2)' }}>
-            <span style={{ fontSize: 22, lineHeight: 1, flexShrink: 0 }}>✅</span>
+            <span style={{ fontSize: 22, lineHeight: 1, flexShrink: 0 }} aria-hidden="true">✅</span>
             <p style={{ fontFamily: 'var(--font-label)', fontSize: 14, color: '#B9F6CA', lineHeight: 1.5, margin: 0, flex: 1 }}>{bannerMsg}</p>
-            <button onClick={() => setShowBanner(false)} style={{ background: 'none', border: 'none', color: '#B9F6CA', fontSize: 18, cursor: 'pointer', lineHeight: 1, flexShrink: 0, padding: 0 }}>✕</button>
+            <button onClick={() => setShowBanner(false)} aria-label="Dismiss" style={{ background: 'none', border: 'none', color: '#B9F6CA', fontSize: 18, cursor: 'pointer', lineHeight: 1, flexShrink: 0, padding: 0 }}>✕</button>
           </div>
         </div>
       )}
 
-      {/* ── Hero ── */}
+      {/* ── 1. Hero ── */}
       <section className="hero scanlines">
         <video
           className="hero__video"
@@ -794,88 +825,109 @@ function HomePage({ data, loading }) {
         <div className="hero__overlay" />
         <div className="hero__content">
           <img src="/logo.png" alt="Latin District LA" className="hero__logo" onError={e => e.target.style.display = 'none'} />
+          <div className="hero__eyebrow">A DOWNTOWN LOS ANGELES NIGHTLIFE NETWORK</div>
           <div className="hero__headline">
-            <div className="neon-white" style={{ color: '#fff' }}>LATIN</div>
-            <div className="neon-white" style={{ color: '#fff' }}>DISTRICT</div>
+            <div className="neon-white" style={{ color: '#fff' }}>Downtown LA nightlife,</div>
+            <div className="neon-blue" style={{ color: 'var(--blue)' }}>connected.</div>
           </div>
-          <p className="hero__sub">Multiple venues. One district. Los Angeles.</p>
+          <p className="hero__sub">
+            Latin District LA brings together bars, clubs, lounges, restaurants, and entertainment spaces—primarily across the Historic Core—to create a more connected nightlife destination.
+          </p>
           <div className="hero__buttons">
-            <Link to="/events" className="btn btn-red">See This Week →</Link>
-            <Link to="/friday-night" className="btn btn-outline-blue">Friday Night →</Link>
+            <Link to="/venues" className="btn btn-blue">Explore the Venues</Link>
+            <Link to="/friday-night" className="btn btn-outline-blue">Plan Friday Night</Link>
           </div>
         </div>
       </section>
 
       <NeonDivider />
 
-      {/* ── Spotlight Event ── */}
-      {!loading && spotlightEvent && (
-        <>
-          <section className="section">
-            <div className="container">
-              <div className="section-tag" style={{ color: 'var(--red)' }}>Don't Miss This</div>
-              <NeonDivider />
-              <SpotlightCard event={spotlightEvent} />
-            </div>
-          </section>
-          <NeonDivider />
-        </>
-      )}
-
-      {/* ── Flagship Hero Event ── */}
-      {!loading && flagshipEvent && (
-        <>
-          <section className="section" style={{ background: 'linear-gradient(135deg, rgba(255,23,68,.06), rgba(0,0,0,0))' }}>
-            <div className="container">
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 32, alignItems: 'center' }}>
-                {flagshipEvent.flyer_image_url && (
-                  <div style={{ borderRadius: 4, overflow: 'hidden', maxHeight: 400, position: 'relative' }}>
-                    <img
-                      src={convertDriveUrl(flagshipEvent.flyer_image_url)}
-                      alt={flagshipEvent.event_name}
-                      style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', opacity: 0, transition: 'opacity .35s ease' }}
-                      onLoad={e => { e.target.style.opacity = '1' }}
-                    />
-                    <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(6,6,15,.85) 0%, transparent 60%)' }} />
-                  </div>
-                )}
-                <div>
-                  <span style={{ fontFamily: 'var(--font-label)', fontSize: 11, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--red)', background: 'rgba(255,23,68,.12)', border: '1px solid rgba(255,23,68,.3)', borderRadius: 2, padding: '4px 10px', display: 'inline-block', marginBottom: 14 }}>
-                    ★ Featured Event
-                  </span>
-                  <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: 'clamp(32px, 8vw, 72px)', color: 'var(--cream)', lineHeight: 1, marginBottom: 14 }}>
-                    {flagshipEvent.event_name}
-                  </h2>
-                  <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', marginBottom: 20 }}>
-                    {flagshipEvent.date && <span style={{ fontFamily: 'var(--font-label)', fontSize: 14, color: 'var(--muted)' }}>📅 {formatDate(flagshipEvent.date)}</span>}
-                    {flagshipEvent.time && <span style={{ fontFamily: 'var(--font-label)', fontSize: 14, color: 'var(--muted)' }}>🕙 {flagshipEvent.time}</span>}
-                    {flagshipEvent.venue && <span style={{ fontFamily: 'var(--font-label)', fontSize: 14, color: 'var(--muted)' }}>📍 {flagshipEvent.venue}</span>}
-                  </div>
-                  {flagshipEvent.description && (
-                    <p style={{ fontFamily: 'var(--font-label)', fontSize: 15, color: 'var(--muted)', lineHeight: 1.6, maxWidth: 560, marginBottom: 24 }}>
-                      {flagshipEvent.description}
-                    </p>
-                  )}
-                  {flagshipEvent.ticket_link ? (
-                    <a href={flagshipEvent.ticket_link} target="_blank" rel="noopener noreferrer" className="btn btn-red" onClick={() => trackTicketClick(flagshipEvent, 'nightlife')}>
-                      Get Tickets →
-                    </a>
-                  ) : (
-                    <Link to="/events" className="btn btn-outline-blue">View Events →</Link>
-                  )}
-                </div>
-              </div>
-            </div>
-          </section>
-          <NeonDivider />
-        </>
-      )}
-
-      {/* ── This Weekend ── */}
+      {/* ── 2. What Is Latin District LA? ── */}
       <section className="section">
         <div className="container">
-          <div className="section-tag">This Weekend in DTLA</div>
-          <h2 className="section-heading">THIS WEEKEND IN DTLA</h2>
+          <div className="section-tag">What Is Latin District LA?</div>
+          <h2 className="section-heading mb-16">More than an event.<br />A connected nightlife district.</h2>
+          <p style={{ fontFamily: 'var(--font-label)', fontSize: 17, color: 'var(--muted)', lineHeight: 1.65, maxWidth: 700, marginBottom: 40 }}>
+            Latin District LA is a growing coalition of independent Downtown venues working together to make nightlife easier to discover and stronger as a community. Every location offers its own atmosphere, music, and experience—all connected through one district.
+          </p>
+          <div className="what-is-pillars">
+            {[
+              { icon: '🏙️', label: 'Multiple Venues', desc: 'Bars, clubs, lounges, restaurants—each independently owned with its own identity.' },
+              { icon: '🎵', label: 'Shared Programming', desc: 'Coordinated weekly nights, DJs, cultural events, and cross-venue activations.' },
+              { icon: '📍', label: 'Historic Core DTLA', desc: 'Concentrated in downtown\'s most walkable nightlife neighborhood.' },
+              { icon: '🤝', label: 'Community Network', desc: 'Connecting venues, promoters, artists, brands, and nightlife audiences.' },
+            ].map((p, i) => (
+              <div key={i} className="what-is-pillar">
+                <span className="what-is-pillar__icon" aria-hidden="true">{p.icon}</span>
+                <div className="what-is-pillar__label">{p.label}</div>
+                <div className="what-is-pillar__desc">{p.desc}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <NeonDivider />
+
+      {/* ── 3. Participating Venues ── */}
+      <section className="section" style={{ background: '#080812' }}>
+        <div className="container">
+          <div className="section-tag">The District</div>
+          <h2 className="section-heading mb-8">Meet the venues shaping<br />Downtown nightlife</h2>
+          <p style={{ fontFamily: 'var(--font-label)', fontSize: 15, color: 'var(--muted)', marginBottom: 36, lineHeight: 1.6, maxWidth: 640 }}>
+            Each venue is independently owned and operated. Latin District connects them through shared marketing, coordinated programming, and a unified nightlife identity.
+          </p>
+          {loading ? (
+            <div className="venues-grid">
+              {[1,2,3,4,5,6].map(i => (
+                <div key={i} style={{ background: '#0D0D1F', border: '1px solid rgba(255,255,255,.06)', borderRadius: 4, height: 340 }} />
+              ))}
+            </div>
+          ) : (
+            <div className="venues-grid">
+              {featuredVenues.map((v, i) => <VenueCard key={i} venue={v} />)}
+            </div>
+          )}
+          <div style={{ textAlign: 'center', marginTop: 40 }}>
+            <Link to="/venues" className="btn btn-blue" onClick={() => window.scrollTo({ top: 0, behavior: 'instant' })}>
+              Explore All Venues
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      <NeonDivider />
+
+      {/* ── 4. Friday Night Latin District ── */}
+      <section className="band band-red">
+        <div className="container" style={{ textAlign: 'center' }}>
+          <div className="section-tag" style={{ color: 'var(--red)' }}>Every Friday</div>
+          <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: 'clamp(40px, 10vw, 80px)', lineHeight: .95, color: 'var(--cream)', marginBottom: 20 }}>
+            THE DISTRICT COMES<br />TOGETHER <span className="neon-red" style={{ color: 'var(--red)' }}>EVERY FRIDAY.</span>
+          </h2>
+          <p style={{ fontFamily: 'var(--font-label)', fontSize: 16, color: 'var(--muted)', maxWidth: 580, margin: '0 auto 12px', lineHeight: 1.65 }}>
+            Friday Night Latin District is your weekly guide to nightlife across participating Downtown venues. Explore different sounds, spaces, DJs, and experiences—then build your own night through the district.
+          </p>
+          <p style={{ fontFamily: 'var(--font-label)', fontSize: 13, color: 'rgba(90,90,138,.85)', maxWidth: 480, margin: '0 auto 32px', lineHeight: 1.55 }}>
+            Admission, age restrictions, hours, and policies vary by venue. Each venue offers its own experience.
+          </p>
+          <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
+            <Link to="/friday-night" className="btn btn-red">Plan Your Friday</Link>
+            <Link to="/events" className="btn btn-outline-blue">See This Week's Lineup</Link>
+          </div>
+        </div>
+      </section>
+
+      <NeonDivider />
+
+      {/* ── 5. Happening in the District ── */}
+      <section className="section">
+        <div className="container">
+          <div className="section-tag">{isWeekend ? 'This Weekend in the District' : 'Upcoming in the District'}</div>
+          <h2 className="section-heading mb-8">Happening in the District</h2>
+          <p style={{ fontFamily: 'var(--font-label)', fontSize: 14, color: 'var(--muted)', marginBottom: 28, lineHeight: 1.5 }}>
+            Events and programming happening throughout the district at participating venues.
+          </p>
           {loading ? (
             <div className="events-grid">{[1,2,3].map(i => <SkeletonCard key={i} />)}</div>
           ) : weekendEvents.length > 0 ? (
@@ -884,101 +936,47 @@ function HomePage({ data, loading }) {
                 {weekendEvents.map((e, i) => <EventCard key={i} event={e} />)}
               </div>
               <div style={{ textAlign: 'center', marginTop: 32 }}>
-                <Link to="/events" className="btn btn-outline-blue" onClick={() => window.scrollTo({ top: 0, behavior: 'instant' })}>View All Events →</Link>
+                <Link to="/events" className="btn btn-outline-blue" onClick={() => window.scrollTo({ top: 0, behavior: 'instant' })}>
+                  See What's Happening
+                </Link>
               </div>
             </>
           ) : (
             <div className="empty-state">
-              <div className="empty-state__icon">🎉</div>
+              <div className="empty-state__icon" aria-hidden="true">🎉</div>
               <p>Events updating soon — follow @LatinDistrictLA for announcements</p>
             </div>
           )}
         </div>
       </section>
 
-      <NeonDivider />
-
-      {/* ── About ── */}
-      <section className="section">
-        <div className="container">
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 48, alignItems: 'center' }}>
-            <div style={{ textAlign: 'center' }}>
-              <div className="counter-number neon-blue" style={{ color: 'var(--blue)', fontSize: 'clamp(28px, 6vw, 48px)', lineHeight: 1.2 }}>DOWNTOWN<br />ONE STOP SPOT</div>
+      {/* ── Spotlight event (if active) ── */}
+      {!loading && spotlightEvent && (
+        <>
+          <NeonDivider />
+          <section className="section">
+            <div className="container">
+              <div className="section-tag" style={{ color: 'var(--red)' }}>Don't Miss This</div>
+              <SpotlightCard event={spotlightEvent} />
             </div>
-            <div>
-              <div className="section-tag">About</div>
-              <h2 className="section-heading" style={{ marginBottom: 24 }}>ONE DISTRICT.<br />ALL NIGHT.</h2>
-              <ul style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                {[
-                  'Multiple venues across DTLA all participating on Friday nights',
-                  'Live DJs spinning Reggaeton, Salsa, Cumbia, Latin House & more',
-                  'A community collective bringing Latin music to Downtown Los Angeles',
-                  'No cover at most venues — just show up and enjoy',
-                  'Community built, locally owned, culturally authentic',
-                ].map((item, i) => (
-                  <li key={i} style={{ display: 'flex', gap: 12, alignItems: 'flex-start', fontSize: 15, color: 'var(--cream)' }}>
-                    <span style={{ color: 'var(--blue)', marginTop: 2 }}>▸</span>
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        </div>
-      </section>
+          </section>
+        </>
+      )}
 
       <NeonDivider />
 
-      {/* ── Venue Strip ── */}
-      <section className="section-sm" style={{ background: '#080812' }}>
-        <div className="container">
-          <div className="section-tag">The Network</div>
-          <h2 className="section-heading mb-24">OUR VENUES</h2>
-          <div className="venue-strip">
-            {venueStrip.map((v, i) => (
-              <div key={i} className="venue-strip-item" onClick={() => navigate('/venues')}>
-                <div className="venue-strip-item__name">{v.venue_name}</div>
-                <div className="venue-strip-item__tag">{v.tag}</div>
-              </div>
-            ))}
-          </div>
-          <div style={{ textAlign: 'center', marginTop: 28 }}>
-            <Link to="/venues" className="btn btn-outline-blue">See All Venues →</Link>
-          </div>
-        </div>
-      </section>
-
-      <NeonDivider />
-
-      {/* ── Friday Night Band ── */}
-      <section className="band band-red">
-        <div className="container" style={{ textAlign: 'center' }}>
-          <div className="section-tag" style={{ color: 'var(--red)' }}>Every Week</div>
-          <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: 'clamp(48px, 12vw, 96px)', lineHeight: .95, color: 'var(--cream)', marginBottom: 16 }}>
-            FRIDAY NIGHT<br /><span className="neon-red" style={{ color: 'var(--red)' }}>LATIN DISTRICT</span>
-          </h2>
-          <p style={{ fontFamily: 'var(--font-label)', fontSize: 16, color: 'var(--muted)', maxWidth: 500, margin: '0 auto 32px', lineHeight: 1.5 }}>
-            Every Friday. Multiple venues. Different vibes — all one culture.
-            From 10PM to 2AM across Downtown LA.
-          </p>
-          <Link to="/friday-night" className="btn btn-red">Explore Friday Night →</Link>
-        </div>
-      </section>
-
-
-      {/* ── Collaborator CTA ── */}
+      {/* ── 6. Partnership CTA ── */}
       <section className="section">
         <div className="container">
           <div className="cta-section">
-            <div className="section-tag">Grow With Us</div>
-            <h2 className="section-heading mb-16">ARE YOU A VENUE,<br />PROMOTER, OR BRAND?</h2>
-            <p style={{ fontFamily: 'var(--font-label)', fontSize: 16, color: 'var(--muted)', maxWidth: 480, margin: '0 auto 32px', lineHeight: 1.5 }}>
-              Join the Latin District network. Reach thousands of DTLA nightlife
-              attendees every Friday night.
+            <div className="section-tag">Join the Network</div>
+            <h2 className="section-heading mb-16">Help shape the future<br />of Downtown nightlife.</h2>
+            <p style={{ fontFamily: 'var(--font-label)', fontSize: 16, color: 'var(--muted)', maxWidth: 540, margin: '0 auto 32px', lineHeight: 1.65 }}>
+              Latin District LA works with independent venues, promoters, artists, brands, and community organizations to build stronger nightlife programming across Downtown Los Angeles.
             </p>
             <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
-              <Link to="/contact" className="btn btn-blue">Partner With Us</Link>
-              <Link to="/submit-event" className="btn btn-outline-blue">Submit Your Event</Link>
+              <Link to="/contact" className="btn btn-blue">Join the District</Link>
+              <Link to="/contact" className="btn btn-outline-blue">Partner With Us</Link>
             </div>
           </div>
         </div>
@@ -1121,20 +1119,23 @@ function EventsPage({ data, loading }) {
 
 function VenuesPage({ data, loading }) {
   const venues = (data.venues.length > 0 ? data.venues : FALLBACK_VENUES)
-    .filter(v => isActiveItem(v.active))
+    .filter(v => isActiveItem(v.active) && (v.active || '').toLowerCase() !== 'verify')
 
   return (
     <div className="page-top">
       <section className="section">
         <div className="container">
           <LiveBadge />
-          <div className="section-tag">The Network</div>
-          <h1 className="section-heading neon-blue mb-32">VENUES</h1>
+          <div className="section-tag">The District</div>
+          <h1 className="section-heading neon-blue mb-8">THE VENUES</h1>
+          <p style={{ fontFamily: 'var(--font-label)', fontSize: 16, color: 'var(--muted)', maxWidth: 640, marginBottom: 40, lineHeight: 1.65 }}>
+            These are the independent bars, clubs, lounges, restaurants, and entertainment spaces that make up the Latin District network. Each venue is independently owned and operated. Latin District connects them through shared programming, marketing, and nightlife identity.
+          </p>
 
           {loading ? (
             <div className="venues-grid">
               {[1,2,3,4,5,6].map(i => (
-                <div key={i} style={{ background: '#0D0D1F', border: '1px solid rgba(255,255,255,.06)', borderRadius: 4, height: 280 }} />
+                <div key={i} style={{ background: '#0D0D1F', border: '1px solid rgba(255,255,255,.06)', borderRadius: 4, height: 320 }} />
               ))}
             </div>
           ) : (
@@ -1144,11 +1145,12 @@ function VenuesPage({ data, loading }) {
           )}
 
           <div className="cta-section" style={{ marginTop: 64 }}>
-            <h3 style={{ fontFamily: 'var(--font-heading)', fontSize: 32, marginBottom: 8 }}>IS YOUR VENUE MISSING?</h3>
-            <p style={{ fontFamily: 'var(--font-label)', fontSize: 15, color: 'var(--muted)', marginBottom: 24 }}>
-              Join the Latin District network and reach Friday night crowds across DTLA.
+            <div className="section-tag">Join the Network</div>
+            <h3 style={{ fontFamily: 'var(--font-heading)', fontSize: 'clamp(28px, 6vw, 44px)', marginBottom: 12 }}>IS YOUR VENUE MISSING?</h3>
+            <p style={{ fontFamily: 'var(--font-label)', fontSize: 15, color: 'var(--muted)', marginBottom: 28, maxWidth: 480, margin: '0 auto 28px', lineHeight: 1.6 }}>
+              Join the Latin District network. Get access to shared marketing, a coordinated Friday night program, and a growing nightlife audience across Downtown LA.
             </p>
-            <Link to="/contact" className="btn btn-blue">Get Listed →</Link>
+            <Link to="/contact" className="btn btn-blue">Get In Touch</Link>
           </div>
         </div>
       </section>
@@ -1180,23 +1182,29 @@ function FridayNightPage({ data, loading }) {
           <div style={{ color: 'var(--cream)' }}>FRIDAY NIGHT</div>
           <div className="neon-red" style={{ color: 'var(--red)' }}>LATIN DISTRICT</div>
         </div>
-        <p style={{ fontFamily: 'var(--font-label)', fontSize: 16, color: 'var(--muted)', maxWidth: 500, margin: '20px auto 36px', lineHeight: 1.5, position: 'relative', zIndex: 1 }}>
-          Every Friday. 10PM – 2AM. Multiple venues across DTLA.<br />
-          Different vibes. Same culture.
+        <p style={{ fontFamily: 'var(--font-label)', fontSize: 16, color: 'var(--muted)', maxWidth: 540, margin: '20px auto 16px', lineHeight: 1.65, position: 'relative', zIndex: 1 }}>
+          Friday Night Latin District is your weekly guide to nightlife across participating Downtown venues. Explore different sounds, spaces, DJs, and experiences—then build your own night through the district.
+        </p>
+        <p style={{ fontFamily: 'var(--font-label)', fontSize: 13, color: 'rgba(90,90,138,.85)', maxWidth: 460, margin: '0 auto 32px', lineHeight: 1.55, position: 'relative', zIndex: 1 }}>
+          Multiple venues participate each Friday. Admission, age restrictions, hours, and policies vary by venue.
         </p>
         <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap', position: 'relative', zIndex: 1 }}>
-          <Link to="/events" className="btn btn-red">See Events →</Link>
+          <Link to="/venues" className="btn btn-red">Explore the Venues</Link>
+          <Link to="/events" className="btn btn-outline-blue">See All Events</Link>
         </div>
       </section>
 
       <NeonDivider />
 
-      {/* Live Lineup */}
+      {/* This Friday's Lineup */}
       <section className="section">
         <div className="container">
           <LiveBadge text="Live lineup updated every week" />
           <div className="section-tag">This Friday</div>
-          <h2 className="section-heading neon-red mb-32" style={{ color: 'var(--red)' }}>LIVE LINEUP</h2>
+          <h2 className="section-heading neon-red mb-8" style={{ color: 'var(--red)' }}>THIS FRIDAY'S LINEUP</h2>
+          <p style={{ fontFamily: 'var(--font-label)', fontSize: 14, color: 'var(--muted)', marginBottom: 32, lineHeight: 1.5 }}>
+            Participating venues, DJs, and events across the district this Friday night. Each venue offers its own experience — explore more than one or find your spot and stay all night.
+          </p>
           {loading ? (
             <div className="events-grid">{[1,2,3].map(i => <SkeletonCard key={i} />)}</div>
           ) : hasAny ? (
@@ -1205,8 +1213,11 @@ function FridayNightPage({ data, loading }) {
             </div>
           ) : (
             <div className="empty-state">
-              <div className="empty-state__icon">🎵</div>
-              <p>Friday night lineup drops soon — follow @LatinDistrictLA for updates.</p>
+              <div className="empty-state__icon" aria-hidden="true">🎵</div>
+              <p>This Friday's lineup drops soon — follow @LatinDistrictLA for updates.</p>
+              <div style={{ marginTop: 24 }}>
+                <Link to="/venues" className="btn btn-outline-blue">Browse the Venues</Link>
+              </div>
             </div>
           )}
         </div>
@@ -1261,13 +1272,13 @@ function FridayNightPage({ data, loading }) {
       {/* How It Works */}
       <section className="section">
         <div className="container">
-          <div className="section-tag">Simple</div>
-          <h2 className="section-heading mb-32">HOW IT WORKS</h2>
+          <div className="section-tag">Plan Your Night</div>
+          <h2 className="section-heading mb-32">HOW TO USE THIS GUIDE</h2>
           <div className="steps-grid">
             {[
-              { num: '01', title: 'Pick Your Venue', desc: 'Browse the district map and choose where to start your Friday night.' },
-              { num: '02', title: 'Move Freely', desc: 'Walk between venues — all within walking distance in DTLA. No Uber required.' },
-              { num: '03', title: 'Stay All Night', desc: 'Different DJs, different vibes, same culture. Stay til 2AM at your favorite spot.' },
+              { num: '01', title: 'Browse the Venues', desc: 'Check which venues are participating this Friday. Each venue has its own atmosphere, music, and vibe.' },
+              { num: '02', title: 'Plan Your Route', desc: 'Most participating venues are walkable in the Historic Core. Start at one, explore others—no Uber required.' },
+              { num: '03', title: 'Check Policies', desc: 'Admission, age requirements, dress codes, and hours vary by venue. Confirm details at each door.' },
             ].map((s, i) => (
               <div key={i} className="step">
                 <div className="step__num">{s.num}</div>
@@ -1999,6 +2010,139 @@ function CalendarPage({ data, loading }) {
   )
 }
 
+// ── ABOUT PAGE ───────────────────────────────────────────────────────────────
+
+function AboutPage() {
+  return (
+    <div className="page-top">
+      {/* Hero */}
+      <section className="page-hero scanlines" style={{ background: 'linear-gradient(180deg, rgba(0,229,255,.06) 0%, #06060F 100%)' }}>
+        <div className="page-hero__bg-text">ABOUT</div>
+        <div className="page-hero__title">
+          <div style={{ color: 'var(--cream)' }}>LATIN</div>
+          <div className="neon-blue" style={{ color: 'var(--blue)' }}>DISTRICT LA</div>
+        </div>
+        <p style={{ fontFamily: 'var(--font-label)', fontSize: 17, color: 'var(--muted)', maxWidth: 560, margin: '20px auto 36px', lineHeight: 1.65, position: 'relative', zIndex: 1 }}>
+          Building a more connected, more visible, and more welcoming nightlife destination across Downtown Los Angeles.
+        </p>
+        <div style={{ position: 'relative', zIndex: 1 }}>
+          <Link to="/venues" className="btn btn-blue">Explore the Venues</Link>
+        </div>
+      </section>
+
+      <NeonDivider />
+
+      {/* Mission */}
+      <section className="section">
+        <div className="container" style={{ maxWidth: 800 }}>
+          <div className="section-tag">Our Mission</div>
+          <h2 className="section-heading mb-24">WHY LATIN DISTRICT EXISTS</h2>
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: 17, color: 'var(--cream)', lineHeight: 1.8, marginBottom: 20 }}>
+            Latin District LA exists to help independent Downtown venues collaborate, increase nightlife discovery, support local talent, bring more foot traffic into the Historic Core, and build a nightlife destination people can recognize and return to.
+          </p>
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: 16, color: 'var(--muted)', lineHeight: 1.75, marginBottom: 20 }}>
+            Downtown Los Angeles has a rich, deep nightlife culture—but it has historically been fragmented. Great venues operate in isolation, audiences don't know what else is around them, and the district as a whole doesn't get the recognition it deserves.
+          </p>
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: 16, color: 'var(--muted)', lineHeight: 1.75 }}>
+            Latin District changes that. By connecting venues under a shared identity, coordinating programming, and creating a unified nightlife calendar, we make it easier for people to discover more of Downtown and easier for venues to reach the audiences they deserve.
+          </p>
+        </div>
+      </section>
+
+      <NeonDivider />
+
+      {/* How It's Organized */}
+      <section className="section" style={{ background: '#080812' }}>
+        <div className="container">
+          <div className="section-tag">How We're Organized</div>
+          <h2 className="section-heading mb-32">THE STRUCTURE</h2>
+          <div className="about-structure-grid">
+            {[
+              {
+                num: '01',
+                title: 'Latin District LA',
+                color: 'var(--blue)',
+                desc: 'The overall venue network and nightlife district. Latin District coordinates shared marketing, programming, and a unified identity across all participating venues.',
+              },
+              {
+                num: '02',
+                title: 'Participating Venues',
+                color: 'var(--cream)',
+                desc: 'The independent bars, clubs, lounges, restaurants, and entertainment spaces that make up the district. Each venue remains independently owned, operated, and programmed.',
+              },
+              {
+                num: '03',
+                title: 'Friday Night Latin District',
+                color: 'var(--red)',
+                desc: 'The flagship weekly program that brings the network together every Friday. A guide to nightlife across participating Downtown venues—multiple sounds, spaces, and experiences every week.',
+              },
+              {
+                num: '04',
+                title: 'Events & Activations',
+                color: 'var(--purple)',
+                desc: 'Individual events, special activations, cultural programs, seasonal campaigns, and watch parties happening at participating venues throughout the year.',
+              },
+            ].map((item, i) => (
+              <div key={i} className="about-structure-item">
+                <div className="about-structure-item__num" style={{ color: item.color }}>{item.num}</div>
+                <div>
+                  <div className="about-structure-item__title" style={{ color: item.color }}>{item.title}</div>
+                  <div className="about-structure-item__desc">{item.desc}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <NeonDivider />
+
+      {/* What We Do */}
+      <section className="section">
+        <div className="container">
+          <div className="section-tag">What We Do</div>
+          <h2 className="section-heading mb-32">HOW WE CONNECT THE DISTRICT</h2>
+          <div className="collab-grid">
+            {[
+              { icon: '📣', title: 'Shared Visibility', desc: 'Unified marketing across social, digital, and street-level channels. When the district promotes, every venue benefits.' },
+              { icon: '🗺️', title: 'Venue Discovery', desc: "A single destination to explore all participating venues—locations, hours, atmosphere, and what's happening there." },
+              { icon: '🎶', title: 'Coordinated Programming', desc: 'Weekly programming anchored by Friday Night Latin District, bringing multiple venues together under shared cultural energy.' },
+              { icon: '📅', title: 'Unified Calendar', desc: "One place to see what's happening across all venues—events, DJs, special nights, and activations throughout the week." },
+              { icon: '🤝', title: 'Cross-Venue Activations', desc: 'Collaborations, bar crawls, cultural events, and district-wide campaigns that move audiences between venues.' },
+              { icon: '🎨', title: 'Community Partnerships', desc: 'Working with DJs, artists, promoters, brands, and community organizations to bring meaningful programming to the district.' },
+            ].map((c, i) => (
+              <div key={i} className="collab-card">
+                <div className="collab-card__icon" aria-hidden="true">{c.icon}</div>
+                <div className="collab-card__title">{c.title}</div>
+                <div className="collab-card__desc">{c.desc}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <NeonDivider />
+
+      {/* CTA */}
+      <section className="section">
+        <div className="container">
+          <div className="cta-section">
+            <div className="section-tag">Get Involved</div>
+            <h2 className="section-heading mb-16">HELP BUILD THE DISTRICT</h2>
+            <p style={{ fontFamily: 'var(--font-label)', fontSize: 16, color: 'var(--muted)', maxWidth: 520, margin: '0 auto 32px', lineHeight: 1.65 }}>
+              We work with venues, promoters, artists, brands, and community organizations. If you want to be part of what's being built in Downtown LA, reach out.
+            </p>
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
+              <Link to="/contact" className="btn btn-blue">Join the District</Link>
+              <Link to="/venues" className="btn btn-outline-blue">Explore the Venues</Link>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  )
+}
+
 // ── App Root ─────────────────────────────────────────────────────────────────
 
 function ScrollToTop() {
@@ -2040,6 +2184,7 @@ export default function App() {
         <Route path="/calendar" element={<CalendarPage data={data} loading={loading} />} />
         <Route path="/venues" element={<VenuesPage data={data} loading={loading} />} />
         <Route path="/friday-night" element={<FridayNightPage data={data} loading={loading} />} />
+        <Route path="/about" element={<AboutPage />} />
         <Route path="/watchfest" element={<Navigate to="/events" replace />} />
         <Route path="/bar-crawl" element={
           <div className="page-top" style={{ textAlign: 'center', padding: '120px 24px' }}>
