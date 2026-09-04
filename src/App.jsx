@@ -788,7 +788,8 @@ function HomePage({ data, loading }) {
   const { events: weekendEvents, isWeekend } = getThisWeekendEvents(data.events)
   const spotlightEvent = data.events.find(e => isActiveItem(e.active) && isSpotlightItem(e) && isUpcoming(e))
 
-  const allVenues = (data.venues.length > 0 ? data.venues : FALLBACK_VENUES)
+  const sheetVenuesValid = data.venues.some(v => v.venue_name)
+  const allVenues = (sheetVenuesValid ? data.venues : FALLBACK_VENUES)
     .filter(v => isActiveItem(v.active) && (v.active || '').toLowerCase() !== 'verify')
   const featuredVenues = allVenues.slice(0, 6)
 
@@ -1118,7 +1119,8 @@ function EventsPage({ data, loading }) {
 // ── VENUES PAGE ─────────────────────────────────────────────────────────────
 
 function VenuesPage({ data, loading }) {
-  const venues = (data.venues.length > 0 ? data.venues : FALLBACK_VENUES)
+  const sheetVenuesValid = data.venues.some(v => v.venue_name)
+  const venues = (sheetVenuesValid ? data.venues : FALLBACK_VENUES)
     .filter(v => isActiveItem(v.active) && (v.active || '').toLowerCase() !== 'verify')
 
   return (
