@@ -770,216 +770,210 @@ function Footer() {
   )
 }
 
-// ── HOME PAGE ───────────────────────────────────────────────────────────────
+// ── HOME PAGE (Halloween Edition) ───────────────────────────────────────────
+
+const HW_TICKET_LINK = 'https://pear.us/latindistrictla/post/halloween'
+
+const HW_TIERS = [
+  { name: 'Pre-Sale',  price: '$10', desc: 'Limited — first access' },
+  { name: 'Early Bird', price: '$20', desc: 'Early bird pricing' },
+  { name: 'GA Tier 1', price: '$25', desc: 'General admission' },
+  { name: 'GA Tier 2', price: '$30', desc: 'General admission' },
+  { name: 'Last Call',  price: '$40', desc: 'Final tickets — door price' },
+]
+
+const HW_LINEUP = [
+  { dj: 'MARSS',    time: '10:00PM – 11:00PM' },
+  { dj: 'CAMILITA', time: '11:00PM – 12:00AM' },
+  { dj: 'FRENCH',   time: '12:00AM – 1:00AM' },
+  { dj: 'BRAVO',    time: '1:00AM – 2:00AM' },
+]
+
+const HW_GENRES = ['Electronic', 'Reggaeton', 'Hip Hop', 'Pop']
 
 function HomePage({ data, loading }) {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const successType = searchParams.get('success')  // 'event' | 'contact' | null
+  const successType = searchParams.get('success')
   const [showBanner, setShowBanner] = useState(() => !!searchParams.get('success'))
 
-  // Clear the ?success param from the URL immediately so refresh doesn't re-show
   useEffect(() => {
-    if (successType) {
-      navigate('/', { replace: true })
-    }
+    if (successType) navigate('/', { replace: true })
   }, [])
-
-  const { events: weekendEvents, isWeekend } = getThisWeekendEvents(data.events)
-  const spotlightEvent = data.events.find(e => isActiveItem(e.active) && isSpotlightItem(e) && isUpcoming(e))
-
-  const sheetVenuesValid = data.venues.some(v => v.venue_name)
-  const allVenues = (sheetVenuesValid ? data.venues : FALLBACK_VENUES)
-    .filter(v => isActiveItem(v.active) && (v.active || '').toLowerCase() !== 'verify')
-  const featuredVenues = allVenues.slice(0, 6)
 
   const bannerMsg = successType === 'event'
     ? 'Event submitted! We received your event and will review it within 48 hours.'
-    : 'Message received! We\'ll get back to you within 48 hours.'
+    : "Message received! We'll get back to you within 48 hours."
 
   return (
-    <div className="page-top">
+    <div className="page-top halloween-page">
 
       {/* ── Success Banner ── */}
       {showBanner && (
         <div style={{ position: 'fixed', top: 60, left: 0, right: 0, zIndex: 900, display: 'flex', justifyContent: 'center', padding: '0 16px', pointerEvents: 'none' }}>
           <div style={{ background: '#0D2B1A', border: '1px solid #00C853', borderRadius: 8, padding: '14px 20px', maxWidth: 520, width: '100%', display: 'flex', alignItems: 'flex-start', gap: 12, pointerEvents: 'auto', boxShadow: '0 4px 24px rgba(0,200,83,.2)' }}>
-            <span style={{ fontSize: 22, lineHeight: 1, flexShrink: 0 }} aria-hidden="true">✅</span>
+            <span style={{ fontSize: 22, lineHeight: 1, flexShrink: 0 }}>✅</span>
             <p style={{ fontFamily: 'var(--font-label)', fontSize: 14, color: '#B9F6CA', lineHeight: 1.5, margin: 0, flex: 1 }}>{bannerMsg}</p>
-            <button onClick={() => setShowBanner(false)} aria-label="Dismiss" style={{ background: 'none', border: 'none', color: '#B9F6CA', fontSize: 18, cursor: 'pointer', lineHeight: 1, flexShrink: 0, padding: 0 }}>✕</button>
+            <button onClick={() => setShowBanner(false)} style={{ background: 'none', border: 'none', color: '#B9F6CA', fontSize: 18, cursor: 'pointer', padding: 0 }}>✕</button>
           </div>
         </div>
       )}
 
       {/* ── 1. Hero ── */}
-      <section className="hero scanlines">
-        <video
-          className="hero__video"
-          src={import.meta.env.VITE_HERO_VIDEO_URL || '/hero-video.mp4'}
-          autoPlay
-          muted
-          loop
-          playsInline
-          onError={e => { e.target.style.display = 'none' }}
-        />
-        <div className="hero__bg" />
-        <div className="hero__overlay" />
-        <div className="hero__content">
-          <img src="/logo.png" alt="Latin District LA" className="hero__logo" onError={e => e.target.style.display = 'none'} />
-          <div className="hero__eyebrow">A DOWNTOWN LOS ANGELES NIGHTLIFE NETWORK</div>
-          <div className="hero__headline">
-            <div className="neon-white" style={{ color: '#fff' }}>Downtown LA nightlife,</div>
-            <div className="neon-blue" style={{ color: 'var(--blue)' }}>connected.</div>
+      <section className="hw-hero">
+        <div className="hw-hero__bg" />
+        <div className="hw-drip" aria-hidden="true">
+          {[...Array(9)].map((_, i) => <span key={i} className="hw-drip__drop" style={{ '--i': i }} />)}
+        </div>
+        <div className="hw-hero__content">
+          <img src="/logo.png" alt="Latin District LA" className="hw-hero__logo" onError={e => { e.target.style.display = 'none' }} />
+          <div className="hw-hero__eyebrow">LATIN DISTRICT LA PRESENTS</div>
+          <div className="hw-hero__date-badge">OCT. 31ST &nbsp;·&nbsp; 10PM – LATE</div>
+          <h1 className="hw-hero__title">HALLOWEEN<br />COSTUME<br />PARTY</h1>
+          <div className="hw-hero__subtitle">DTLA ROOFTOP</div>
+          <div className="hw-hero__tags">
+            <span>21+</span>
+            <span>OPEN AIR</span>
+            <span>DOWNTOWN LA</span>
           </div>
-          <p className="hero__sub">
-            Latin District LA brings together bars, clubs, lounges, restaurants, and entertainment spaces—primarily across the Historic Core—to create a more connected nightlife destination.
-          </p>
-          <div className="hero__buttons">
-            <Link to="/venues" className="btn btn-blue">Explore the Venues</Link>
-            <Link to="/friday-night" className="btn btn-outline-blue">Plan Friday Night</Link>
+          <div className="hw-hero__genres">Electronic · Reggaeton · Hip Hop · Pop</div>
+          <a href={HW_TICKET_LINK} target="_blank" rel="noopener noreferrer" className="btn hw-hero__cta">
+            GET TICKETS NOW
+          </a>
+          <p className="hw-hero__disclaimer">Tickets are limited. Price increases as the event approaches.</p>
+        </div>
+      </section>
+
+      {/* ── 2. Ticket Tiers ── */}
+      <section className="hw-section hw-tickets-section">
+        <div className="container">
+          <div className="hw-section__label">GET YOUR TICKETS</div>
+          <h2 className="hw-section__heading">SECURE YOUR SPOT</h2>
+          <p className="hw-section__sub">Limited tickets. Price goes up as we get closer — grab the lowest tier available now.</p>
+          <div className="hw-tiers">
+            {HW_TIERS.map((t, i) => (
+              <a key={i} href={HW_TICKET_LINK} target="_blank" rel="noopener noreferrer" className="hw-tier">
+                <div className="hw-tier__price">{t.price}</div>
+                <div className="hw-tier__name">{t.name}</div>
+                <div className="hw-tier__desc">{t.desc}</div>
+              </a>
+            ))}
+          </div>
+          <div style={{ textAlign: 'center', marginTop: 44 }}>
+            <a href={HW_TICKET_LINK} target="_blank" rel="noopener noreferrer" className="btn hw-hero__cta" style={{ fontSize: 18, padding: '18px 52px' }}>
+              BUY TICKETS
+            </a>
+            <p style={{ fontFamily: 'var(--font-label)', fontSize: 12, color: 'rgba(245,232,208,.35)', marginTop: 14, letterSpacing: '.06em' }}>
+              21+ · OPEN AIR ROOFTOP · DTLA
+            </p>
           </div>
         </div>
       </section>
 
-      <NeonDivider />
+      <div className="hw-divider" />
 
-      {/* ── 2. What Is Latin District LA? ── */}
-      <section className="section">
+      {/* ── 3. DJ Lineup ── */}
+      <section className="hw-section">
         <div className="container">
-          <div className="section-tag">What Is Latin District LA?</div>
-          <h2 className="section-heading mb-16">More than an event.<br />A connected nightlife district.</h2>
-          <p style={{ fontFamily: 'var(--font-label)', fontSize: 17, color: 'var(--muted)', lineHeight: 1.65, maxWidth: 700, marginBottom: 40 }}>
-            Latin District LA is a growing coalition of independent Downtown venues working together to make nightlife easier to discover and stronger as a community. Every location offers its own atmosphere, music, and experience—all connected through one district.
-          </p>
-          <div className="what-is-pillars">
-            {[
-              { icon: '🏙️', label: 'Multiple Venues', desc: 'Bars, clubs, lounges, restaurants—each independently owned with its own identity.' },
-              { icon: '🎵', label: 'Shared Programming', desc: 'Coordinated weekly nights, DJs, cultural events, and cross-venue activations.' },
-              { icon: '📍', label: 'Historic Core DTLA', desc: 'Concentrated in downtown\'s most walkable nightlife neighborhood.' },
-              { icon: '🤝', label: 'Community Network', desc: 'Connecting venues, promoters, artists, brands, and nightlife audiences.' },
-            ].map((p, i) => (
-              <div key={i} className="what-is-pillar">
-                <span className="what-is-pillar__icon" aria-hidden="true">{p.icon}</span>
-                <div className="what-is-pillar__label">{p.label}</div>
-                <div className="what-is-pillar__desc">{p.desc}</div>
+          <div className="hw-section__label">SOUNDS BY</div>
+          <h2 className="hw-section__heading">THE LINEUP</h2>
+          <div className="hw-lineup">
+            {HW_LINEUP.map((l, i) => (
+              <div key={i} className={`hw-lineup__slot${i % 2 === 1 ? ' hw-lineup__slot--alt' : ''}`}>
+                <div className="hw-lineup__dj">{l.dj}</div>
+                <div className="hw-lineup__time">{l.time}</div>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      <NeonDivider />
+      <div className="hw-divider" />
 
-      {/* ── 3. Participating Venues ── */}
-      <section className="section" style={{ background: '#080812' }}>
-        <div className="container">
-          <div className="section-tag">The District</div>
-          <h2 className="section-heading mb-8">Meet the venues shaping<br />Downtown nightlife</h2>
-          <p style={{ fontFamily: 'var(--font-label)', fontSize: 15, color: 'var(--muted)', marginBottom: 36, lineHeight: 1.6, maxWidth: 640 }}>
-            Each venue is independently owned and operated. Latin District connects them through shared marketing, coordinated programming, and a unified nightlife identity.
+      {/* ── 4. About ── */}
+      <section className="hw-section hw-about-section">
+        <div className="container" style={{ maxWidth: 760 }}>
+          <div className="hw-section__label">ABOUT THE EVENT</div>
+          <h2 className="hw-section__heading">HALLOWEEN NIGHT IN DTLA</h2>
+          <p className="hw-about__body">
+            Latin District LA is taking over a secret rooftop space in Downtown Los Angeles for Halloween night. Expect an open-air night overlooking the DTLA skyline with Reggaeton, Hip-Hop, Club Bangers, costumes, drinks, and a full Halloween atmosphere until late.
           </p>
-          {loading ? (
-            <div className="venues-grid">
-              {[1,2,3,4,5,6].map(i => (
-                <div key={i} style={{ background: '#0D0D1F', border: '1px solid rgba(255,255,255,.06)', borderRadius: 4, height: 340 }} />
-              ))}
-            </div>
-          ) : (
-            <div className="venues-grid">
-              {featuredVenues.map((v, i) => <VenueCard key={i} venue={v} />)}
-            </div>
-          )}
-          <div style={{ textAlign: 'center', marginTop: 40 }}>
-            <Link to="/venues" className="btn btn-blue" onClick={() => window.scrollTo({ top: 0, behavior: 'instant' })}>
-              Explore All Venues
-            </Link>
+          <div className="hw-details-grid">
+            {[
+              { icon: '📅', label: 'DATE', val: 'October 31, 2026' },
+              { icon: '⏰', label: 'TIME', val: '10PM – Late' },
+              { icon: '📍', label: 'LOCATION', val: 'Secret Rooftop, DTLA', note: 'Address sent to confirmed ticket holders before the event' },
+              { icon: '🧛', label: 'COSTUMES', val: 'Highly Encouraged' },
+            ].map((d, i) => (
+              <div key={i} className="hw-detail">
+                <div className="hw-detail__icon">{d.icon}</div>
+                <div className="hw-detail__label">{d.label}</div>
+                <div className="hw-detail__val">{d.val}</div>
+                {d.note && <div className="hw-detail__note">{d.note}</div>}
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
-      <NeonDivider />
+      <div className="hw-divider" />
 
-      {/* ── 4. Friday Night Latin District ── */}
-      <section className="band band-red">
+      {/* ── 5. Music Genres ── */}
+      <section className="hw-section hw-genres-section">
+        <div className="container">
+          <div className="hw-section__label">MUSIC</div>
+          <h2 className="hw-section__heading">THE SOUNDS</h2>
+          <div className="hw-genres">
+            {HW_GENRES.map((g, i) => (
+              <div key={i} className={`hw-genre${i % 2 === 1 ? ' hw-genre--alt' : ''}`}>{g}</div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <div className="hw-divider" />
+
+      {/* ── 6. Event Policies ── */}
+      <section className="hw-section">
+        <div className="container" style={{ maxWidth: 760 }}>
+          <div className="hw-section__label">IMPORTANT INFO</div>
+          <div className="hw-policies">
+            <div className="hw-policy">
+              <h3 className="hw-policy__title">Costume Policy</h3>
+              <p className="hw-policy__body">
+                Go all out — but keep it safe and venue-friendly. No large or oversized props. No real weapons, replica weapons, realistic-looking firearms, sharp objects, or anything that could be mistaken for a weapon. Security reserves the right to deny any costume item or prop. Guests wearing full-face masks may be asked to temporarily remove them at entry and during ID/security checks.
+              </p>
+            </div>
+            <div className="hw-policy">
+              <h3 className="hw-policy__title">Entry Guidelines</h3>
+              <p className="hw-policy__body">
+                All guests are subject to security screening before entering. No outside food or beverages. No outside alcohol. No weapons or dangerous objects. No oversized costume props. No illegal substances. No fighting, harassment, or disruptive behavior. Tickets do not override venue capacity or safety requirements — entry may be refused to anyone who does not follow event or security policies.
+              </p>
+            </div>
+            <div className="hw-policy">
+              <h3 className="hw-policy__title">Rooftop Event</h3>
+              <p className="hw-policy__body">
+                This event takes place outdoors on a rooftop in Downtown LA. Dress for the weather. Plan your transportation ahead of time — rideshare is strongly encouraged. Please make sure the email and phone number attached to your ticket are accurate so you receive location and entry information before the event.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div className="hw-divider" />
+
+      {/* ── 7. Final CTA ── */}
+      <section className="hw-section hw-final-cta">
         <div className="container" style={{ textAlign: 'center' }}>
-          <div className="section-tag" style={{ color: 'var(--red)' }}>Every Friday</div>
-          <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: 'clamp(40px, 10vw, 80px)', lineHeight: .95, color: 'var(--cream)', marginBottom: 20 }}>
-            THE DISTRICT COMES<br />TOGETHER <span className="neon-red" style={{ color: 'var(--red)' }}>EVERY FRIDAY.</span>
-          </h2>
-          <p style={{ fontFamily: 'var(--font-label)', fontSize: 16, color: 'var(--muted)', maxWidth: 580, margin: '0 auto 12px', lineHeight: 1.65 }}>
-            Friday Night Latin District is your weekly guide to nightlife across participating Downtown venues. Explore different sounds, spaces, DJs, and experiences—then build your own night through the district.
+          <div className="hw-cta__skull" aria-hidden="true">🎃</div>
+          <h2 className="hw-cta__title">October 31. Downtown Los Angeles. Rooftop. Costumes on.</h2>
+          <p className="hw-cta__sub">We've had a crazy year, but everybody knows Halloween is when the gargolas really come out.</p>
+          <a href={HW_TICKET_LINK} target="_blank" rel="noopener noreferrer" className="btn hw-hero__cta" style={{ fontSize: 20, padding: '20px 60px', marginTop: 36 }}>
+            GET TICKETS NOW
+          </a>
+          <p style={{ fontFamily: 'var(--font-label)', fontSize: 13, color: 'rgba(245,232,208,.35)', marginTop: 20, letterSpacing: '.06em' }}>
+            21+ · Open Air Rooftop · DTLA · Oct 31, 2026
           </p>
-          <p style={{ fontFamily: 'var(--font-label)', fontSize: 13, color: 'rgba(90,90,138,.85)', maxWidth: 480, margin: '0 auto 32px', lineHeight: 1.55 }}>
-            Admission, age restrictions, hours, and policies vary by venue. Each venue offers its own experience.
-          </p>
-          <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
-            <Link to="/friday-night" className="btn btn-red">Plan Your Friday</Link>
-            <Link to="/events" className="btn btn-outline-blue">See This Week's Lineup</Link>
-          </div>
-        </div>
-      </section>
-
-      <NeonDivider />
-
-      {/* ── 5. Happening in the District ── */}
-      <section className="section">
-        <div className="container">
-          <div className="section-tag">{isWeekend ? 'This Weekend in the District' : 'Upcoming in the District'}</div>
-          <h2 className="section-heading mb-8">Happening in the District</h2>
-          <p style={{ fontFamily: 'var(--font-label)', fontSize: 14, color: 'var(--muted)', marginBottom: 28, lineHeight: 1.5 }}>
-            Events and programming happening throughout the district at participating venues.
-          </p>
-          {loading ? (
-            <div className="events-grid">{[1,2,3].map(i => <SkeletonCard key={i} />)}</div>
-          ) : weekendEvents.length > 0 ? (
-            <>
-              <div className="events-grid content-reveal">
-                {weekendEvents.map((e, i) => <EventCard key={i} event={e} />)}
-              </div>
-              <div style={{ textAlign: 'center', marginTop: 32 }}>
-                <Link to="/events" className="btn btn-outline-blue" onClick={() => window.scrollTo({ top: 0, behavior: 'instant' })}>
-                  See What's Happening
-                </Link>
-              </div>
-            </>
-          ) : (
-            <div className="empty-state">
-              <div className="empty-state__icon" aria-hidden="true">🎉</div>
-              <p>Events updating soon — follow @LatinDistrictLA for announcements</p>
-            </div>
-          )}
-        </div>
-      </section>
-
-      {/* ── Spotlight event (if active) ── */}
-      {!loading && spotlightEvent && (
-        <>
-          <NeonDivider />
-          <section className="section">
-            <div className="container">
-              <div className="section-tag" style={{ color: 'var(--red)' }}>Don't Miss This</div>
-              <SpotlightCard event={spotlightEvent} />
-            </div>
-          </section>
-        </>
-      )}
-
-      <NeonDivider />
-
-      {/* ── 6. Partnership CTA ── */}
-      <section className="section">
-        <div className="container">
-          <div className="cta-section">
-            <div className="section-tag">Join the Network</div>
-            <h2 className="section-heading mb-16">Help shape the future<br />of Downtown nightlife.</h2>
-            <p style={{ fontFamily: 'var(--font-label)', fontSize: 16, color: 'var(--muted)', maxWidth: 540, margin: '0 auto 32px', lineHeight: 1.65 }}>
-              Latin District LA works with independent venues, promoters, artists, brands, and community organizations to build stronger nightlife programming across Downtown Los Angeles.
-            </p>
-            <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
-              <Link to="/contact" className="btn btn-blue">Join the District</Link>
-              <Link to="/contact" className="btn btn-outline-blue">Partner With Us</Link>
-            </div>
-          </div>
         </div>
       </section>
     </div>
