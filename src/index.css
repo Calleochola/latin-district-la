@@ -2236,6 +2236,41 @@ ul { list-style: none; }
   box-shadow: 0 0 60px rgba(140,0,0,.8), 0 6px 28px rgba(0,0,0,.5);
 }
 
+/* Countdown */
+.hw-countdown {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 36px;
+}
+
+.hw-countdown__box {
+  background: rgba(120,0,0,.18);
+  border: 1px solid rgba(192,30,30,.35);
+  border-radius: 4px;
+  padding: 14px 18px;
+  min-width: 72px;
+  text-align: center;
+}
+
+.hw-countdown__num {
+  font-family: var(--font-heading);
+  font-size: clamp(36px, 9vw, 56px);
+  line-height: 1;
+  color: #F0E4CC;
+  text-shadow: 0 0 16px rgba(192,30,30,.55);
+}
+
+.hw-countdown__label {
+  font-family: var(--font-label);
+  font-size: 10px;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: rgba(240,228,204,.45);
+  margin-top: 4px;
+}
+
 .hw-hero__disclaimer {
   font-family: var(--font-label);
   font-size: 11px;

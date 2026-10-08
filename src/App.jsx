@@ -805,6 +805,8 @@ function HomePage({ data, loading }) {
     ? 'Event submitted! We received your event and will review it within 48 hours.'
     : "Message received! We'll get back to you within 48 hours."
 
+  const countdown = useCountdown('2026-10-31T22:00:00-07:00')
+
   return (
     <div className="page-top halloween-page">
 
@@ -837,6 +839,21 @@ function HomePage({ data, loading }) {
             <span>DOWNTOWN LA</span>
           </div>
           <div className="hw-hero__genres">Electronic · Reggaeton · Hip Hop · Pop</div>
+          {countdown && (
+            <div className="hw-countdown">
+              {[
+                { num: countdown.days,    label: 'Days' },
+                { num: countdown.hours,   label: 'Hours' },
+                { num: countdown.minutes, label: 'Min' },
+                { num: countdown.seconds, label: 'Sec' },
+              ].map((u, i) => (
+                <div key={i} className="hw-countdown__box">
+                  <div className="hw-countdown__num">{String(u.num).padStart(2, '0')}</div>
+                  <div className="hw-countdown__label">{u.label}</div>
+                </div>
+              ))}
+            </div>
+          )}
           <a href={HW_TICKET_LINK} target="_blank" rel="noopener noreferrer" className="btn hw-hero__cta">
             GET TICKETS NOW
           </a>
